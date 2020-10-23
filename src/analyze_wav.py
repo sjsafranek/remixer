@@ -153,4 +153,3 @@ def get_file_beats(path, params=None):
             break
 
     return beats
-
