@@ -73,6 +73,8 @@ def get_notes_and_chord(filename, start, end, plotit=False):
         plt.ylabel("power")
     notes = []
     final_notes = []
+    final_freqs = []
+    final_confidence = 0
     for _, peak in enumerate(peaks):
         note = freq2str(freqx[peak])
         if plotit:
@@ -84,6 +86,7 @@ def get_notes_and_chord(filename, start, end, plotit=False):
             )
         note = note.split("+")[0].split("-")[0]
         final_notes.append(note)
+        final_freqs.append(freqx[peak])
         note = "".join([i for i in note if not i.isdigit()])
         if note not in notes:
             notes.append(note)
@@ -91,7 +94,7 @@ def get_notes_and_chord(filename, start, end, plotit=False):
     if plotit:
         plt.title("chord guess: '{}'".format(final_chord))
         plt.show()
-    return final_notes, final_chord
+    return final_freqs, final_notes, final_chord, final_confidence
 
 
 # seconds_start = 14.14
@@ -151,5 +154,3 @@ def get_file_beats(path, params=None):
 
     return beats
 
-
-print(get_file_beats("metallica.wav"))
