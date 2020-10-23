@@ -24,12 +24,15 @@ def notes_to_chord(notes):
         chords[chord[0]] += 1
     sorted_d = sorted(chords.items(), key=operator.itemgetter(1))
     try:
-        return sorted_d[0][0]
+        c = sorted_d[0][0]
+        if c == "perfect fourth" or c == "perfect fifth":
+            c = notes[0] + c
+        return c
     except:
         return "".join(notes)
 
 
-def get_notes_and_chord(filename, start, end, plotit=False):
+def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
     fs_rate, signal = wavfile.read(filename)
 
     samples_start = round(fs_rate * seconds_start)
