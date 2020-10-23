@@ -131,7 +131,7 @@ def paulstretch(samplerate, smp, stretch, windowsize_seconds, outfilename):
 def stretch_wav(wavname, target_seconds):
     filename = ntpath.basename(wavname)
     (samplerate, smp) = load_wav(wavname)
-    current_seconds = float(len(smp))/float(samplerate)
+    current_seconds = float(len(smp)) / float(samplerate)
     tmpfile = os.path.join(
         tempfile._get_default_tempdir(), next(tempfile._get_candidate_names()) + ".wav"
     )
