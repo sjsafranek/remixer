@@ -6,3 +6,4 @@ mingus
 aubio
 pydub
 fleep
+psycopg2
