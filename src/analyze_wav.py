@@ -101,7 +101,6 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
         note = "".join([i for i in note if not i.isdigit()])
         if note not in notes:
             notes.append(note)
-    final_chord = notes_to_chord(notes)
     freqs = copy.copy(final_freqs)
     freqs.sort()
     final_noteset = []
@@ -109,6 +108,7 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
         notename = freq_to_note(f)
         if notename not in final_noteset:
             final_noteset.append(notename)
+    final_chord = notes_to_chord(final_noteset)
     
     if plotit:
         plt.title("chord guess: '{}'".format(final_chord))
