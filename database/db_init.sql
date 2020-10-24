@@ -16,6 +16,15 @@ COMMENT ON DOMAIN url IS 'match URLs (http or https)';
 
 
 
+-- create function for casting jsonb array to text array
+CREATE OR REPLACE FUNCTION jsonb_array_cast2text(jsonb) RETURNS text[] AS $f$
+    SELECT
+        array_agg(x)::text[] || ARRAY[]::text[]
+    FROM jsonb_array_elements_text($1) t(x);
+$f$ LANGUAGE sql IMMUTABLE;
+
+
+
 -- Create table for songs
 
 DROP TABLE IF EXISTS songs CASCADE;
