@@ -42,8 +42,10 @@ Imports analyzed song chunks to database
 python3 loader.py -file songs/Ain\'t\ No\ Mountain\ High\ Enough.mp3 -dbport 5431
 
 
-## finder.py
+### finder.py
 
 Finds songs with given noteset
 
-python3 finder.py Gb B -dbport 5431
+python3 finder.py G# B -dbport 5431
+
+[{"song":{"matches":46,"total":308,"song":{"genre":null,"created_at":"2020-10-24T05:04:32Z","updated_at":"2020-10-24T05:04:32Z","url":null,"name":"songs/Ain't No Mountain High Enough.mp3","artist":null,"id":1}}}]

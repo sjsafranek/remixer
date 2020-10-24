@@ -1,3 +1,4 @@
+import json
 
 from src import cmd
 from src import utils
@@ -21,4 +22,5 @@ if __name__ == "__main__":
     # Normalize music notes for search
     noteset = [item[0].upper() + item[1:] for item in args.noteset]
 
-    print(db.fetchSongsWithNoteSet(noteset))
+    results = db.fetchSongsWithNoteSet(noteset)
+    print(json.dumps(results, separators=(',', ':')))
