@@ -74,7 +74,7 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
     threshold = np.mean(freqy2) + 3 * np.std(freqy2)
     for i in range(8):
         mi = np.argmax(freqy2)
-        if threshold < freqy2[mi] and freqx[mi] > 100:
+        if threshold < freqy2[mi] and freqx[mi] > 100 and mi not in peaks:
             peaks.append(mi)
         freqy2[mi - 50 : mi + 50] = 0
 

@@ -77,32 +77,11 @@ INSERT INTO notesets (song_id, beat_id, note, "power")
 
     def importSongChunks(self, songId, generator):
         for chunk in generator:
-
-            print(json.dumps(chunk, separators=(',', ':')), "\n")
-
+            print(json.dumps(chunk, separators=(',', ':')))
             beatId = self.createBeat(songId, int(chunk["start"] * 1000), int(chunk["end"] * 1000))
             self.importNotes(songId, beatId, chunk["notes"])
             self.importNoteSet(songId, beatId, chunk["noteset"])
 
-#             cursor = self.conn.cursor()
-#             cursor.execute("""
-# INSERT INTO beats (song_id, start, "end")
-# VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-# """, (
-#                     songId,
-#                     int(chunk["start"] * 1000),
-#                     int(chunk["end"] * 1000),
-#                     chunk["confidence"],
-#                     chunk["chord"],
-#                     json.dumps(chunk["notes"]),
-#                     json.dumps(chunk["noteset"]),
-#                     json.dumps(chunk["freqs"])
-#                 )
-#             )
-#             self.conn.commit()
-#             cursor.close()
-
-    #
     def fetchSongsWithNoteSet(self, noteset):
         cursor = self.conn.cursor()
         cursor.execute("""

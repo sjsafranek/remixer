@@ -11,6 +11,8 @@ if __name__ == "__main__":
     parser.add_argument('-name', type=str, help='song name')
     parser.add_argument('-artist', type=str, help='artist')
     parser.add_argument('-genre', type=str, help='genre')
+    parser.add_argument('--dryrun', action='store_true', help='does not do database writes')
+    parser.set_defaults(dryrun=False)
     args = parser.parse_args()
 
     # Create database
@@ -28,6 +30,13 @@ if __name__ == "__main__":
         # Collect metadata tags
         tags = utils.getAudioTags(filename)
 
+        generator = pipeline_wav.pipeline_wav(tmpfile)
+
+        if args.dryrun:
+            for chunk in generator:
+                print(chunk)
+            return
+
         # Create song record
         songId = db.createSong(
             filename,
@@ -39,7 +48,7 @@ if __name__ == "__main__":
         )
 
         # Read file and insert chunks to database
-        db.importSongChunks(songId, pipeline_wav.pipeline_wav(tmpfile))
+        db.importSongChunks(songId, generator)
 
     # Convert to WAV file if needed
     utils.convertAudioToWav(filename, callback=ingestSong)
