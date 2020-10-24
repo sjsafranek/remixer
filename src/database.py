@@ -27,7 +27,11 @@ class Database(object):
 
     def createSong(self, filename, title=None, album=None, artist=None, genre=None, year=None):
         cursor = self.conn.cursor()
-        cursor.execute("""INSERT INTO songs (filename, title, artist, genre, album, year) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id;""", (filename, title, artist, genre, album, year,))
+        cursor.execute("""
+INSERT INTO songs (filename, title, artist, genre, album, year)
+    VALUES (%s, %s, %s, %s, %s, %s)
+    RETURNING id;
+""", (filename, title, artist, genre, album, year,))
         results = cursor.fetchone()
         if not results or 0 == len(results):
             conn.rollback()
@@ -36,48 +40,78 @@ class Database(object):
         cursor.close()
         return results[0]
 
-    def importSongChunks(self, songId, generator):
+    def createBeat(self, songId, start, end):
         cursor = self.conn.cursor()
-        for chunk in generator:
-            print(chunk)
-            cursor.execute("""INSERT INTO notes (song_id, start, "end", confidence, chord, notes, noteset, freqs) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", (
-                    songId,
-                    int(chunk["start"] * 1000),
-                    int(chunk["end"] * 1000),
-                    chunk["confidence"],
-                    chunk["chord"],
-                    json.dumps(chunk["notes"]),
-                    json.dumps(chunk["noteset"]),
-                    json.dumps(chunk["freqs"])
-                )
-            )
+        cursor.execute("""
+INSERT INTO beats (song_id, start, "end")
+    VALUES (%s, %s, %s)
+    RETURNING id;
+""", (songId, start, end,))
+        results = cursor.fetchone()
+        if not results or 0 == len(results):
+            conn.rollback()
+            return None
+        self.conn.commit()
+        cursor.close()
+        return results[0]
+
+    def importNotes(self, songId, beatId, notes):
+        cursor = self.conn.cursor()
+        for note in notes:
+            cursor.execute("""
+INSERT INTO notes (song_id, beat_id, note, "power", frequency)
+    VALUES (%s, %s, %s, %s, %s)
+""", (songId, beatId, note["note"], note["power"], note["frequency"]) )
         self.conn.commit()
         cursor.close()
 
+    def importNoteSet(self, songId, beatId, noteset):
+        cursor = self.conn.cursor()
+        for note in noteset:
+            cursor.execute("""
+INSERT INTO notesets (song_id, beat_id, note, "power")
+    VALUES (%s, %s, %s, %s)
+""", (songId, beatId, note["note"], note["power"]) )
+        self.conn.commit()
+        cursor.close()
+
+    def importSongChunks(self, songId, generator):
+        for chunk in generator:
+
+            print(json.dumps(chunk, separators=(',', ':')), "\n")
+
+            beatId = self.createBeat(songId, int(chunk["start"] * 1000), int(chunk["end"] * 1000))
+            self.importNotes(songId, beatId, chunk["notes"])
+            self.importNoteSet(songId, beatId, chunk["noteset"])
+
+#             cursor = self.conn.cursor()
+#             cursor.execute("""
+# INSERT INTO beats (song_id, start, "end")
+# VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+# """, (
+#                     songId,
+#                     int(chunk["start"] * 1000),
+#                     int(chunk["end"] * 1000),
+#                     chunk["confidence"],
+#                     chunk["chord"],
+#                     json.dumps(chunk["notes"]),
+#                     json.dumps(chunk["noteset"]),
+#                     json.dumps(chunk["freqs"])
+#                 )
+#             )
+#             self.conn.commit()
+#             cursor.close()
+
+    #
     def fetchSongsWithNoteSet(self, noteset):
         cursor = self.conn.cursor()
-        # cursor.execute("""
-        #     SELECT json_agg(c) FROM (
-        #         SELECT
-        #             json_build_object(
-        #                 'song',  (SELECT sv.song_json FROM songs_view AS sv WHERE sv.id = songs.id),
-        #                 'matches', count(*),
-        #                 'total', (SELECT count(*) FROM notes AS n2 WHERE n2.song_id = songs.id)
-        #             ) AS song
-        #         FROM notes
-        #         LEFT JOIN songs AS songs ON notes.song_id = songs.id
-        #         WHERE
-        #             %s::JSONB <@ noteset
-        #         GROUP BY songs.id
-        #     ) AS c;
-        # """, (json.dumps(noteset),))
         cursor.execute("""
             SELECT json_agg(c) FROM (
                 SELECT
                     (SELECT sv.song_json FROM songs_view AS sv WHERE sv.id = songs.id) AS song,
                     count(*) AS matches,
-                    (SELECT count(*) FROM notes AS n2 WHERE n2.song_id = songs.id) AS total
-                FROM notes
+                    (SELECT count(*) FROM beats AS b2 WHERE b2.song_id = songs.id) AS total
+                FROM beats
                 LEFT JOIN songs AS songs ON notes.song_id = songs.id
                 WHERE
                     %s::JSONB <@ noteset

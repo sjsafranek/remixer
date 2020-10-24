@@ -45,16 +45,16 @@ $$ language 'plpgsql';
 DROP TABLE IF EXISTS songs CASCADE;
 
 CREATE TABLE IF NOT EXISTS songs (
-    id          SERIAL PRIMARY KEY,
-    filename    VARCHAR NOT NULL,
-    title       VARCHAR,
-    artist      VARCHAR,
-    genre       VARCHAR,
-    album       VARCHAR,
-    year        INTEGER,
-    url         URL,
-    created_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    updated_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    id                      SERIAL PRIMARY KEY,
+    filename                VARCHAR NOT NULL,
+    title                   VARCHAR,
+    artist                  VARCHAR,
+    genre                   VARCHAR,
+    album                   VARCHAR,
+    year                    INTEGER,
+    url                     URL,
+    created_at              TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at              TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- @trigger users_update
@@ -63,28 +63,6 @@ CREATE TRIGGER songs_update
     BEFORE UPDATE ON songs
         FOR EACH ROW
             EXECUTE PROCEDURE update_modified_column();
-
-
-
--- Create table for notes
-DROP TABLE IF EXISTS notes CASCADE;
-
-CREATE TABLE IF NOT EXISTS notes (
-    song_id     INTEGER NOT NULL,
-    start       BIGINT NOT NULL,
-    "end"         BIGINT NOT NULL,
-    confidence  REAL,
-    chord       VARCHAR,
-    notes       JSONB,
-    noteset     JSONB,
-    freqs       JSONB,
-    FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
-    UNIQUE(song_id, start, "end")
-);
-
--- SELECT create_hypertable('notes', 'start', chunk_time_interval=>100000);
-
-
 
 
 DROP VIEW IF EXISTS songs_view CASCADE;
@@ -106,3 +84,55 @@ CREATE OR REPLACE VIEW songs_view AS (
         ) AS song_json
     FROM songs
 );
+
+
+
+
+
+
+
+-- Create table for beats
+DROP TABLE IF EXISTS beats CASCADE;
+
+CREATE TABLE IF NOT EXISTS beats (
+    id                  SERIAL PRIMARY KEY,
+    song_id             INTEGER NOT NULL,
+    start               BIGINT NOT NULL,
+    "end"               BIGINT NOT NULL,
+    FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
+    UNIQUE(song_id, start, "end")
+);
+
+-- SELECT create_hypertable('notes', 'start', chunk_time_interval=>100000);
+
+
+-- Create table for notes
+DROP TABLE IF EXISTS notes CASCADE;
+
+CREATE TABLE IF NOT EXISTS notes (
+    beat_id             INTEGER NOT NULL,
+    song_id             INTEGER NOT NULL,
+    note                VARCHAR,
+    frequency           REAL,
+    "power"             INTEGER,
+    FOREIGN KEY (beat_id) REFERENCES beats(id) ON DELETE CASCADE,
+    FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
+    UNIQUE(beat_id, song_id, note)
+);
+
+
+-- Create table for notesets
+DROP TABLE IF EXISTS notesets CASCADE;
+
+CREATE TABLE IF NOT EXISTS notesets (
+    beat_id             INTEGER NOT NULL,
+    song_id             INTEGER NOT NULL,
+    note                VARCHAR,
+    "power"             VARCHAR,
+    FOREIGN KEY (beat_id) REFERENCES beats(id) ON DELETE CASCADE,
+    FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
+    UNIQUE(beat_id, song_id, note)
+);
+
+
+--
