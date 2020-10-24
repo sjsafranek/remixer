@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS notes (
     confidence  REAL,
     chord       VARCHAR,
     notes       JSONB,
+    noteset     JSONB,
     freqs       JSONB,
     FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
     UNIQUE(song_id, start, "end")

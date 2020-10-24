@@ -43,13 +43,14 @@ if __name__ == "__main__":
     for chunk in pipeline_wav.pipeline_wav(filename):
         print(chunk)
 
-        cur.execute("""INSERT INTO notes (song_id, start, "end", confidence, chord, notes, freqs) VALUES (%s, %s, %s, %s, %s, %s, %s)""", (
+        cur.execute("""INSERT INTO notes (song_id, start, "end", confidence, chord, notes, noteset, freqs) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", (
                 songId,
                 int(chunk["start"] * 1000),
                 int(chunk["end"] * 1000),
                 chunk["confidence"],
                 chunk["chord"],
                 json.dumps(chunk["notes"]),
+                json.dumps(chunk["noteset"]),
                 json.dumps(chunk["freqs"])
             )
         )
