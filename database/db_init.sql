@@ -16,12 +16,12 @@ COMMENT ON DOMAIN url IS 'match URLs (http or https)';
 
 
 
--- create function for casting jsonb array to text array
-CREATE OR REPLACE FUNCTION jsonb_array_cast2text(jsonb) RETURNS text[] AS $f$
-    SELECT
-        array_agg(x)::text[] || ARRAY[]::text[]
-    FROM jsonb_array_elements_text($1) t(x);
-$f$ LANGUAGE sql IMMUTABLE;
+-- -- create function for casting jsonb array to text array
+-- CREATE OR REPLACE FUNCTION jsonb_array_cast2text(jsonb) RETURNS text[] AS $f$
+--     SELECT
+--         array_agg(x)::text[] || ARRAY[]::text[]
+--     FROM jsonb_array_elements_text($1) t(x);
+-- $f$ LANGUAGE sql IMMUTABLE;
 
 
 
@@ -54,4 +54,4 @@ CREATE TABLE IF NOT EXISTS notes (
     UNIQUE(song_id, start, "end")
 );
 
-SELECT create_hypertable('notes', 'start', chunk_time_interval=>100000);
+-- SELECT create_hypertable('notes', 'start', chunk_time_interval=>100000);
