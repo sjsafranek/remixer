@@ -1,4 +1,4 @@
-from analyze_wav import *
+from .analyze_wav import *
 
 
 def pipeline_wav(filename):
