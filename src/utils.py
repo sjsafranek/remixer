@@ -28,6 +28,9 @@ def convertAudioToWav(filename, callback=None):
 
     if "audio/wav" == mtype:
         # No need to convert file
+        if callback:
+            callback(filename)
+            return
         return filename
     elif "audio/mpeg" == mtype:
         fformat = "mp3"
