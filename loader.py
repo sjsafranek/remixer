@@ -26,9 +26,8 @@ if __name__ == "__main__":
 
     filename = args.file
 
+
     def ingestSong(tmpfile):
-        # Collect metadata tags
-        tags = utils.getAudioTags(filename)
 
         generator = pipeline_wav.pipeline_wav(tmpfile)
 
@@ -36,6 +35,9 @@ if __name__ == "__main__":
             for chunk in generator:
                 print(chunk)
             return
+
+        # Collect metadata tags
+        tags = utils.getAudioTags(filename)
 
         # Create song record
         songId = db.createSong(
