@@ -4,6 +4,8 @@ import psycopg2
 
 from src import pipeline_wav
 
+# from database import Database
+
 
 # Open database connection
 conn = psycopg2.connect("host='127.0.0.1' port='5431' dbname='remixerdb' user='postgres' password='dev'")
