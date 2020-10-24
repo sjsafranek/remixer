@@ -25,3 +25,5 @@ docker run -d --name timescaledb -p 127.0.0.1:5431:5432 -e POSTGRES_PASSWORD=dev
 sleep 1
 
 docker exec -it timescaledb psql -U postgres
+
+psql -p 5431 -U postgres -d remixerdb -h 127.0.0.1
