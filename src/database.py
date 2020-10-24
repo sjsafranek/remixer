@@ -53,3 +53,26 @@ class Database(object):
             )
         self.conn.commit()
         cursor.close()
+
+    def fetchSongsWithNoteSet(self, noteset):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT json_agg(c) FROM (
+                SELECT
+                    json_build_object(
+                        'song',  (SELECT sv.song_json FROM songs_view AS sv WHERE sv.id = songs.id),
+                        'matches', count(*),
+                        'total', (SELECT count(*) FROM notes AS n2 WHERE n2.song_id = songs.id)
+                    ) AS song
+                FROM notes
+                LEFT JOIN songs AS songs ON notes.song_id = songs.id
+                WHERE
+                    %s::JSONB <@ noteset
+                GROUP BY songs.id
+            ) AS c;
+        """, (json.dumps(noteset),))
+        results = cursor.fetchone()
+        if not results or 0 == len(results):
+            return None
+        cursor.close()
+        return results[0]

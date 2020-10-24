@@ -35,4 +35,4 @@ if __name__ == "__main__":
         db.importSongChunks(songId, pipeline_wav.pipeline_wav(tmpfile))
 
     # Convert to WAV file if needed
-    filename = utils.convertAudioToWav(filename, callback=ingestSong)
+    utils.convertAudioToWav(filename, callback=ingestSong)

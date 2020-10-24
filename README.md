@@ -27,3 +27,23 @@ sleep 1
 docker exec -it timescaledb psql -U postgres
 
 psql -p 5431 -U postgres -d remixerdb -h 127.0.0.1
+
+
+
+
+
+
+## Tools
+
+### loader.py
+
+Imports analyzed song chunks to database
+
+python3 loader.py -file songs/Ain\'t\ No\ Mountain\ High\ Enough.mp3 -dbport 5431
+
+
+## finder.py
+
+Finds songs with given noteset
+
+python3 finder.py Gb B -dbport 5431

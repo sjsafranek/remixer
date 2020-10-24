@@ -16,6 +16,21 @@ COMMENT ON DOMAIN url IS 'match URLs (http or https)';
 
 
 
+
+
+-- @function update_modified_column
+-- @description updates record updated_at column
+--              with current timestamp
+CREATE OR REPLACE FUNCTION update_modified_column()
+RETURNS TRIGGER AS $$
+    BEGIN
+        NEW.updated_at = now();
+        RETURN NEW;
+    END;
+$$ language 'plpgsql';
+
+
+
 -- -- create function for casting jsonb array to text array
 -- CREATE OR REPLACE FUNCTION jsonb_array_cast2text(jsonb) RETURNS text[] AS $f$
 --     SELECT
@@ -30,12 +45,22 @@ COMMENT ON DOMAIN url IS 'match URLs (http or https)';
 DROP TABLE IF EXISTS songs CASCADE;
 
 CREATE TABLE IF NOT EXISTS songs (
-    id      SERIAL PRIMARY KEY,
-    name    VARCHAR NOT NULL,
-    artist  VARCHAR,
-    genre   VARCHAR,
-    url     URL
+    id          SERIAL PRIMARY KEY,
+    name        VARCHAR NOT NULL,
+    artist      VARCHAR,
+    genre       VARCHAR,
+    url         URL,
+    created_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
+
+-- @trigger users_update
+DROP TRIGGER IF EXISTS songs_update ON songs;
+CREATE TRIGGER songs_update
+    BEFORE UPDATE ON songs
+        FOR EACH ROW
+            EXECUTE PROCEDURE update_modified_column();
+
 
 
 -- Create table for notes
@@ -55,3 +80,23 @@ CREATE TABLE IF NOT EXISTS notes (
 );
 
 -- SELECT create_hypertable('notes', 'start', chunk_time_interval=>100000);
+
+
+
+
+DROP VIEW IF EXISTS songs_view CASCADE;
+
+CREATE OR REPLACE VIEW songs_view AS (
+    SELECT
+        *,
+        json_build_object(
+            'id', songs.id,
+            'name', songs.name,
+            'artist', songs.artist,
+            'genre', songs.genre,
+            'url', songs.url,
+            'created_at', to_char(songs.created_at, 'YYYY-MM-DD"T"HH:MI:SS"Z"'),
+            'updated_at', to_char(songs.updated_at, 'YYYY-MM-DD"T"HH:MI:SS"Z"')
+        ) AS song_json
+    FROM songs
+);
