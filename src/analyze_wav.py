@@ -104,6 +104,8 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
             noteoffset = float(noteoffset.split("+")[1])
         elif "-" in noteoffset:
             noteoffset = -1 * float(noteoffset.split("-")[1])
+        else:
+            continue
         if abs(noteoffset) > 10:
             continue
         if plotit:
