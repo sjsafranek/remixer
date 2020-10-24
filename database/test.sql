@@ -70,3 +70,29 @@ SELECT json_agg(c) FROM (
         '["G#","B"]'::JSONB <@ noteset
     GROUP BY songs.id
 ) AS c;
+
+
+
+
+
+
+
+
+
+
+
+
+SELECT json_agg(c) FROM (
+    SELECT
+        -- json_build_object(
+            -- 'song',  (SELECT sv.song_json FROM songs_view AS sv WHERE sv.id = songs.id),
+            (SELECT sv.song_json FROM songs_view AS sv WHERE sv.id = songs.id) AS song,
+            count(*) as matches,
+            (SELECT count(*) FROM notes AS n2 WHERE n2.song_id = songs.id) as total
+        -- ) AS song
+    FROM notes
+    LEFT JOIN songs AS songs ON notes.song_id = songs.id
+    WHERE
+        '["G#","B"]'::JSONB <@ noteset
+    GROUP BY songs.id
+) AS c;
