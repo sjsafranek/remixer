@@ -10,15 +10,21 @@ from scipy.io import wavfile
 from scipy.signal import find_peaks
 from audiolazy.lazy_midi import freq2str
 import mingus.core.chords as minguschords
-from aubio import source, tempo
+
+try:
+    from aubio import source, tempo
+except:
+    pass
+
 
 def freq_to_note(freq):
     A4 = 440
-    C0 = A4*pow(2, -4.75)
+    C0 = A4 * pow(2, -4.75)
     name = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-    h = round(12*log2(freq/C0))
+    h = round(12 * log2(freq / C0))
     n = h % 12
     return name[n]
+
 
 def notes_to_chord(notes):
     chords = {}
@@ -47,7 +53,10 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
     samples_end = round(fs_rate * seconds_end)
 
     # convert stereo to mono
-    signal = signal.mean(axis=1)
+    try:
+        signal = signal.mean(axis=1)
+    except:
+        pass
 
     # generate time in seconds
     t = np.arange(signal.shape[0]) / fs_rate
@@ -67,7 +76,7 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
         mi = np.argmax(freqy2)
         if threshold < freqy2[mi] and freqx[mi] > 100:
             peaks.append(mi)
-        freqy2[mi - 10 : mi + 10] = 0
+        freqy2[mi - 50 : mi + 50] = 0
 
     if plotit:
         # plot everything
@@ -85,9 +94,19 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
     notes = []
     final_notes = []
     final_freqs = []
+    final_powers = []
     final_confidence = 0
+    max_power = 0
     for _, peak in enumerate(peaks):
         note = freq2str(freqx[peak])
+        noteoffset = note.split("%")[0]
+        if "+" in noteoffset:
+            noteoffset = float(noteoffset.split("+")[1])
+        elif "-" in noteoffset:
+            noteoffset = -1 * float(noteoffset.split("-")[1])
+        if abs(noteoffset) > 10:
+            continue
+        print(noteoffset)
         if plotit:
             plt.text(
                 freqx[peak] + 50,
@@ -95,37 +114,79 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
                 "{:2.1f} ({})".format(freqx[peak], note),
                 fontsize=10,
             )
+        if max_power == 0:
+            max_power = freqy[peak]
         note = note.split("+")[0].split("-")[0]
         final_notes.append(note)
         final_freqs.append(freqx[peak])
+        final_powers.append(int(100 * freqy[peak] / max_power))
         note = "".join([i for i in note if not i.isdigit()])
         if note not in notes:
             notes.append(note)
+    print("final notes", final_notes)
+    print("final notes", final_notes)
+    print("final powers", final_powers)
     freqs = copy.copy(final_freqs)
     freqs.sort()
-    final_noteset = []
-    for f in freqs:
+    noteset = {}
+    for i, f in enumerate(freqs):
         notename = freq_to_note(f)
-        if notename not in final_noteset:
-            final_noteset.append(notename)
+        if notename not in noteset:
+            noteset[notename] = 0
+        noteset[notename] += final_powers[i]
+    noteset_sum = 0
+    for k in noteset:
+        if noteset[k] > noteset_sum:
+            noteset_sum = noteset[k]
+    for k in noteset:
+        noteset[k] = int(100 * noteset[k] / noteset_sum)
+    final_noteset = []
+    final_noteset_power = []
+    for a in sorted(noteset.items(), key=operator.itemgetter(1), reverse=True):
+        final_noteset.append(a[0])
+        final_noteset_power.append(a[1])
+    print("final_noteset", final_noteset)
+    print("final_noteset_power", final_noteset_power)
     final_chord = notes_to_chord(final_noteset)
-    
     if plotit:
         plt.title("chord guess: '{}'".format(final_chord))
         plt.show()
+
+    data = {
+        "start": seconds_start,
+        "end": seconds_end,
+        "notes": [],
+        "noteset": [],
+    }
+    for i, _ in enumerate(final_freqs):
+        data["notes"].append(
+            {
+                "note": final_notes[i],
+                "frequency": final_freqs[i],
+                "power": final_powers[i],
+            }
+        )
+    for i, _ in enumerate(final_noteset):
+        data["noteset"].append(
+            {"note": final_noteset[i], "power": final_noteset_power[i]}
+        )
+    print(data)
     return final_freqs, final_notes, final_noteset, final_chord, final_confidence
 
 
-# seconds_start = 14.14
-# seconds_end = 14.557
-# filename = "metallica.wav"
+# seconds_start = 26.98
+# seconds_end = 32.517
+# filename = "ear.wav"
+# seconds_start = 23.381
+# seconds_end = 25.330
+# filename = "cmajor.wav"
 # print(get_notes_and_chord(filename, seconds_start, seconds_end, plotit=True))
 
 
 def get_file_beats(path, params=None):
-    """ Calculate the beats per minute (bpm) of a given file.
-        path: path to the file
-        param: dictionary of parameters
+    """Calculate the beats per minute (bpm) of a given file.
+    path: path to the file
+    param: dictionary of parameters
     """
     if params is None:
         params = {}

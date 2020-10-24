@@ -6,17 +6,8 @@ def pipeline_wav(filename):
     for i, beat in enumerate(beats):
         if i == 0:
             continue
-        data = {"start": beats[i - 1], "end": beat}
-        (
-            data["freqs"],
-            data["notes"],
-            data["noteset"],
-            data["chord"],
-            data["confidence"],
-        ) = get_notes_and_chord(filename, data["start"], data["end"])
-
-        yield data
+        yield get_notes_and_chord(filename, beats[i - 1], beat)
 
 
-#for data in pipeline_wav("metallica.wav"):
+# for data in pipeline_wav("metallica.wav"):
 #    print(data)
