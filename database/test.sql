@@ -17,8 +17,11 @@ GROUP BY songs.id
 
 
 
+
 SELECT
-    songs.*, count(*)
+    songs.*,
+    count(*) AS matches,
+    (SELECT count(*) FROM notes AS n2 WHERE n2.song_id = songs.id) AS total
 FROM notes
 LEFT JOIN songs ON notes.song_id = songs.id
 WHERE

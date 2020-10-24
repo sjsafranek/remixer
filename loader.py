@@ -1,61 +1,38 @@
-import json
-import argparse
-import psycopg2
 
+from src import cmd
+from src import utils
+from src import database
 from src import pipeline_wav
-
-# from database import Database
-
-
-# Open database connection
-conn = psycopg2.connect("host='127.0.0.1' port='5431' dbname='remixerdb' user='postgres' password='dev'")
-
-# Initialize cursor
-cur = conn.cursor()
-
-
-def createSong(songname, artist, genre):
-    cur.execute("""INSERT INTO songs (name, artist, genre) VALUES (%s, %s, %s) RETURNING id;""", (songname, artist, genre,))
-    results = cur.fetchone()
-    if not results or 0 == len(results):
-        conn.rollback()
-        return None
-    conn.commit()
-    return results[0]
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Command line client for PyRemixer')
-    parser.add_argument('-f', type=str, help='song file')
-    parser.add_argument('-n', type=str, help='song name')
-    parser.add_argument('-a', type=str, help='artist')
-    parser.add_argument('-g', type=str, help='genre')
+    parser = cmd.getArgumentParser()
+    parser.add_argument('-file', type=str, help='song file')
+    parser.add_argument('-name', type=str, help='song name')
+    parser.add_argument('-artist', type=str, help='artist')
+    parser.add_argument('-genre', type=str, help='genre')
     args = parser.parse_args()
 
-    filename = args.f
+    # Create database
+    db = database.Database(
+        host=args.dbhost,
+        port=args.dbport,
+        dbname=args.dbname,
+        user=args.dbuser,
+        password=args.dbpass
+    )
 
-    # Create record in database
-    songname = args.n
+    filename = args.file
+
+    songname = args.name
     if not songname:
         songname = filename
 
-    songId = createSong(songname, args.a, args.g)
+    def ingestSong(tmpfile):
+        # Create song record
+        songId = db.createSong(songname, args.artist, args.genre)
+        # Read file and insert chunks to database
+        db.importSongChunks(songId, pipeline_wav.pipeline_wav(tmpfile))
 
-    # Read file and insert chunks to database
-    for chunk in pipeline_wav.pipeline_wav(filename):
-        print(chunk)
-
-        cur.execute("""INSERT INTO notes (song_id, start, "end", confidence, chord, notes, noteset, freqs) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)""", (
-                songId,
-                int(chunk["start"] * 1000),
-                int(chunk["end"] * 1000),
-                chunk["confidence"],
-                chunk["chord"],
-                json.dumps(chunk["notes"]),
-                json.dumps(chunk["noteset"]),
-                json.dumps(chunk["freqs"])
-            )
-        )
-
-    conn.commit()
-    conn.close()
+    # Convert to WAV file if needed
+    filename = utils.convertAudioToWav(filename, callback=ingestSong)
