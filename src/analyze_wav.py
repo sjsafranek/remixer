@@ -2,6 +2,7 @@ import math
 import copy
 import itertools
 import operator
+from math import log2, pow
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -11,6 +12,13 @@ from audiolazy.lazy_midi import freq2str
 import mingus.core.chords as minguschords
 from aubio import source, tempo
 
+def freq_to_note(freq):
+    A4 = 440
+    C0 = A4*pow(2, -4.75)
+    name = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+    h = round(12*log2(freq/C0))
+    n = h % 12
+    return name[n]
 
 def notes_to_chord(notes):
     chords = {}
@@ -94,10 +102,18 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
         if note not in notes:
             notes.append(note)
     final_chord = notes_to_chord(notes)
+    freqs = copy.copy(final_freqs)
+    freqs.sort()
+    final_noteset = []
+    for f in freqs:
+        notename = freq_to_note(f)
+        if notename not in final_noteset:
+            final_noteset.append(notename)
+    
     if plotit:
         plt.title("chord guess: '{}'".format(final_chord))
         plt.show()
-    return final_freqs, final_notes, final_chord, final_confidence
+    return final_freqs, final_notes, final_noteset, final_chord, final_confidence
 
 
 # seconds_start = 14.14

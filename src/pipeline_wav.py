@@ -10,9 +10,11 @@ def pipeline_wav(filename):
         (
             data["freqs"],
             data["notes"],
+            data["noteset"],
             data["chord"],
             data["confidence"],
         ) = get_notes_and_chord(filename, data["start"], data["end"])
+
         yield data
 
 
