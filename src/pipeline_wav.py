@@ -1,3 +1,5 @@
+import sys
+
 from .analyze_wav import *
 
 
@@ -11,3 +13,7 @@ def pipeline_wav(filename):
 
 # for data in pipeline_wav("metallica.wav"):
 #    print(data)
+
+if __name__ == "__main__":
+    for data in pipeline_wav(sys.argv[1]):
+        print(data)
