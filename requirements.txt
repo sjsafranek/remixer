@@ -7,3 +7,4 @@ aubio
 pydub
 fleep
 psycopg2
+tinytag

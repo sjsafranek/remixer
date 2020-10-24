@@ -24,13 +24,20 @@ if __name__ == "__main__":
 
     filename = args.file
 
-    songname = args.name
-    if not songname:
-        songname = filename
-
     def ingestSong(tmpfile):
+        # Collect metadata tags
+        tags = utils.getAudioTags(filename)
+
         # Create song record
-        songId = db.createSong(songname, args.artist, args.genre)
+        songId = db.createSong(
+            filename,
+            title=tags.title,
+            album = tags.album,
+            artist = tags.artist,
+            genre = tags.genre,
+            year = tags.year
+        )
+
         # Read file and insert chunks to database
         db.importSongChunks(songId, pipeline_wav.pipeline_wav(tmpfile))
 

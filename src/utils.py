@@ -1,5 +1,6 @@
 import fleep
 import tempfile
+from tinytag import TinyTag
 from pydub import AudioSegment
 
 
@@ -43,3 +44,8 @@ def convertAudioToWav(filename, callback=None):
 
     audio.export("tmp.wav", format="wav")
     return "tmp.wav"
+
+
+def getAudioTags(filename):
+    """ https://pypi.org/project/tinytag/ """
+    return TinyTag.get(filename)

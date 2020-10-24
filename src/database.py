@@ -25,9 +25,9 @@ class Database(object):
             self.options["password"]
         )
 
-    def createSong(self, songname, artist, genre):
+    def createSong(self, filename, title=None, album=None, artist=None, genre=None, year=None):
         cursor = self.conn.cursor()
-        cursor.execute("""INSERT INTO songs (name, artist, genre) VALUES (%s, %s, %s) RETURNING id;""", (songname, artist, genre,))
+        cursor.execute("""INSERT INTO songs (filename, title, artist, genre, album, year) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id;""", (filename, title, artist, genre, album, year,))
         results = cursor.fetchone()
         if not results or 0 == len(results):
             conn.rollback()
@@ -35,6 +35,8 @@ class Database(object):
         self.conn.commit()
         cursor.close()
         return results[0]
+
+
 
     def importSongChunks(self, songId, generator):
         cursor = self.conn.cursor()

@@ -46,9 +46,12 @@ DROP TABLE IF EXISTS songs CASCADE;
 
 CREATE TABLE IF NOT EXISTS songs (
     id          SERIAL PRIMARY KEY,
-    name        VARCHAR NOT NULL,
+    filename    VARCHAR NOT NULL,
+    title       VARCHAR,
     artist      VARCHAR,
     genre       VARCHAR,
+    album       VARCHAR,
+    year        INTEGER,
     url         URL,
     created_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
@@ -91,8 +94,11 @@ CREATE OR REPLACE VIEW songs_view AS (
         *,
         json_build_object(
             'id', songs.id,
-            'name', songs.name,
+            'filename', songs.filename,
+            'title', songs.title,
             'artist', songs.artist,
+            'album', songs.album,
+            'year', songs.year,
             'genre', songs.genre,
             'url', songs.url,
             'created_at', to_char(songs.created_at, 'YYYY-MM-DD"T"HH:MI:SS"Z"'),
