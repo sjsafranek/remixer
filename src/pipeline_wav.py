@@ -8,6 +8,7 @@ def pipeline_wav(filename):
     for i, beat in enumerate(beats):
         if i == 0:
             continue
+        print(filename, beats[i - 1], beat)
         yield get_notes_and_chord(filename, beats[i - 1], beat)
 
 
