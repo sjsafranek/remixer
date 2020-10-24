@@ -106,7 +106,6 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
             noteoffset = -1 * float(noteoffset.split("-")[1])
         if abs(noteoffset) > 10:
             continue
-        print(noteoffset)
         if plotit:
             plt.text(
                 freqx[peak] + 50,
@@ -123,9 +122,9 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
         note = "".join([i for i in note if not i.isdigit()])
         if note not in notes:
             notes.append(note)
-    print("final notes", final_notes)
-    print("final notes", final_notes)
-    print("final powers", final_powers)
+    # print("final notes", final_notes)
+    # print("final notes", final_notes)
+    # print("final powers", final_powers)
     freqs = copy.copy(final_freqs)
     freqs.sort()
     noteset = {}
@@ -145,8 +144,8 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
     for a in sorted(noteset.items(), key=operator.itemgetter(1), reverse=True):
         final_noteset.append(a[0])
         final_noteset_power.append(a[1])
-    print("final_noteset", final_noteset)
-    print("final_noteset_power", final_noteset_power)
+    # print("final_noteset", final_noteset)
+    # print("final_noteset_power", final_noteset_power)
     final_chord = notes_to_chord(final_noteset)
     if plotit:
         plt.title("chord guess: '{}'".format(final_chord))
@@ -170,8 +169,7 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
         data["noteset"].append(
             {"note": final_noteset[i], "power": final_noteset_power[i]}
         )
-    print(data)
-    return final_freqs, final_notes, final_noteset, final_chord, final_confidence
+    return data
 
 
 # seconds_start = 26.98
