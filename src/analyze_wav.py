@@ -11,6 +11,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
 from scipy.signal import find_peaks
+import scipy.linalg
+import scipy.stats
 from audiolazy.lazy_midi import freq2str
 import mingus.core.chords as minguschords
 from loguru import logger
@@ -21,6 +23,21 @@ try:
     from aubio import source, tempo
 except:
     pass
+
+def ks_key(notes):
+    name = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+    X = np.array([0]*len(name))
+    for _, note in enumerate(notes):
+        X[name.index(note)] += 1
+    # https://gist.github.com/bmcfee/1f66825cef2eb34c839b42dddbad49fd
+    X = scipy.stats.zscore(X)
+    # Coefficients from Kumhansl and Schmuckler
+    # as reported here: http://rnhart.net/articles/key-finding/
+    major = np.asarray([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
+    major = scipy.stats.zscore(major)
+    major = scipy.linalg.circulant(major)
+    major = major.T.dot(X)
+    return name[np.argmax(major)]
 
 
 def freq_to_note(freq):
