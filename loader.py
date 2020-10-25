@@ -28,13 +28,12 @@ if __name__ == "__main__":
         password=args.dbpass
     )
 
-    filename = args.file
-    fname = filename
-    afile = AudioFile(filename)
-
     # Create temp file
     with tempfile.NamedTemporaryFile(mode="wb") as fileHandler:
 
+        filename = args.file
+
+        afile = AudioFile(filename)
         afile.convert(out_filehandler = fileHandler, out_format="wav")
 
         fname = fileHandler.name
