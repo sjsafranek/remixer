@@ -280,22 +280,22 @@ class Database(object):
             self.conn.commit()
         return Song(results[0], self)
 
-    def _getSongs(self, query, params):
+    def __getSongs(self, query, params):
         with self.getCursor() as cursor:
             cursor.execute(query, params)
             results = cursor.fetchall()
         return Collection([Song(id, self) for id in results])
 
     def getSongsByFilename(self, filename):
-        return self._getSongs(
+        return self.__getSongs(
             """SELECT id FROM songs WHERE filename = %s;""", (filename,)
         )
 
     def getSongsByTitle(self, title):
-        return self._getSongs("""SELECT id FROM songs WHERE title = %s;""", (title,))
+        return self.__getSongs("""SELECT id FROM songs WHERE title = %s;""", (title,))
 
     def getSongsById(self, id):
-        return self._getSongs("""SELECT id FROM songs WHERE id = %s;""", (id,))
+        return self.__getSongs("""SELECT id FROM songs WHERE id = %s;""", (id,))
 
     # def fetchSongsWithNoteSet__depricated(self, noteset, minPower=1, maxPower=100):
     #     cursor = self.conn.cursor()
