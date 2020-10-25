@@ -1,5 +1,5 @@
 
-import time 
+import time
 import sys
 
 import fleep
@@ -20,17 +20,28 @@ class AudioFile(object):
         # https://pypi.org/project/tinytag/
         self._tags = TinyTag.get(self.filename)
 
+        # open audio segment
+        self._audio = AudioSegment.from_file(self.filename, format = self.format)
+
     @property
     def tags(self):
         return self._tags
 
     @property
     def mimetype(self):
-        return self._info.mime
+        return self._info.mime[0]
 
     @property
     def extension(self):
         return self._info.extension
+
+    @property
+    def format(self):
+        if "audio/wav" == self.mimetype:
+            return "wav"
+        elif "audio/mpeg" == self.mimetype:
+            return "mp3"
+        raise ValueError("unsupported mimetype: " + self.mimetype)
 
     def splice(self, ms_start, ms_end, out_filename=None, out_filehandler=None, out_format="wav"):
         """ @method: splice
@@ -39,22 +50,11 @@ class AudioFile(object):
         if not out_filename and not out_filehandler:
             out_filename = self.filename.replace(self.extension, out_format)
 
-        mtype = self.mimetype
-        in_format = ""
-
-        if "audio/wav" == mtype:
-            in_format = "wav"
-        elif "audio/mpeg" == mtype:
-            in_format = "mp3"
-
-        audio = AudioSegment.from_file(self.filename, format = in_format)
-
         if out_filehandler:
-            audio[ms_start:ms_end].export(out_f = out_filehandler, format = out_format)
-            return True
+            self._audio[ms_start:ms_end].export(out_f = out_filehandler, format = out_format)
+            return
 
-        audio[ms_start:ms_end].export(out_filename, format = out_format)
-        return True
+        self._audio[ms_start:ms_end].export(out_filename, format = out_format)
 
     def convert(self, out_filename=None, out_filehandler=None, out_format="wav"):
         """ @method: convert
@@ -63,22 +63,11 @@ class AudioFile(object):
         if not out_filename and not out_filehandler:
             out_filename = self.filename.replace(self.extension, out_format)
 
-        mtype = self.mimetype
-        in_format = ""
-
-        if "audio/wav" == mtype:
-            return False
-        elif "audio/mpeg" == mtype:
-            in_format = "mp3"
-
-        audio = AudioSegment.from_file(self.filename, format = in_format)
-
         if out_filehandler:
-            audio.export(out_f = out_filehandler, format = out_format)
-            return True
+            self._audio.export(out_f = out_filehandler, format = out_format)
+            return
 
-        audio.export(out_filename, format = out_format)
-        return True
+        self._audio.export(out_filename, format = out_format)
 
 
 

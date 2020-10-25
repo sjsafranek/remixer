@@ -35,8 +35,9 @@ if __name__ == "__main__":
     # Create temp file
     with tempfile.NamedTemporaryFile(mode="wb") as fileHandler:
 
-        if afile.convert(out_filehandler = fileHandler, out_format="wav"):
-            fname = fileHandler.name
+        afile.convert(out_filehandler = fileHandler, out_format="wav")
+
+        fname = fileHandler.name
 
         # Make the generator
         aa = AudioAnalyzer(fname)
