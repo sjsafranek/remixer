@@ -26,7 +26,6 @@ if __name__ == "__main__":
 
     filename = args.file
 
-
     def ingestSong(tmpfile):
 
         generator = pipeline_wav.pipeline_wav(tmpfile)
@@ -40,7 +39,7 @@ if __name__ == "__main__":
         tags = utils.getAudioTags(filename)
 
         # Create song record
-        songId = db.createSong(
+        song = db.createSong(
             filename,
             title=tags.title,
             album = tags.album,
@@ -50,7 +49,7 @@ if __name__ == "__main__":
         )
 
         # Read file and insert chunks to database
-        db.importSongChunks(songId, generator)
+        song.importBeats(generator)
 
     # Convert to WAV file if needed
     utils.convertAudioToWav(filename, callback=ingestSong)

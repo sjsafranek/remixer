@@ -3,6 +3,152 @@ import json
 import psycopg2
 
 
+
+class Model(object):
+
+    def __init__(self, id, db):
+        self.id = id
+        self.db = db
+
+    def getDatabase(self):
+        return self.db
+
+    def getCursor(self):
+        return self.getDatabase().getCursor()
+
+    def save(self):
+        self.getDatabase().commit()
+
+    def undo(self):
+        self.getDatabase().rollback()
+
+    def get(self, columnId):
+        with self.getCursor() as cursor:
+            cursor.execute("""SELECT {0} FROM {1} WHERE id = %s;""".format(columnId, self.table),
+                            (self.id, ))
+            results = cursor.fetchone()
+        return results[0]
+
+    def delete(self):
+        with self.getCursor() as cursor:
+            cursor.execute("""DELETE FROM {0} WHERE id = %s;""".format(self.table), (self.id,))
+            self.save()
+
+
+
+class Beat(Model):
+
+    table = "beats"
+
+    def __init__(self, id, db, song):
+        super(Beat, self).__init__(id, db)
+        self.song = song
+
+    def importNotes(self, notes):
+        with self.getCursor() as cursor:
+            for note in notes:
+                cursor.execute("""INSERT INTO notes (song_id, beat_id, note, "power", frequency)
+                                    VALUES (%s, %s, %s, %s, %s);""",
+                                (self.song.id, self.id, note["note"], note["power"], note["frequency"]))
+            self.save()
+
+    @property
+    def notes(self):
+        with self.getCursor() as cursor:
+            cursor.execute("""SELECT json_agg(c) FROM (SELECT * FROM notes WHERE beat_id = %s) AS c;""", (self.id, ))
+            results = cursor.fetchall()
+        return results[0][0]
+
+    def importNoteSet(self, noteset):
+        with self.getCursor() as cursor:
+            for note in noteset:
+                cursor.execute("""INSERT INTO notesets (song_id, beat_id, note, "power")
+                                    VALUES (%s, %s, %s, %s)""",
+                                (self.song.id, self.id, note["note"], note["power"]))
+            self.save()
+
+    @property
+    def noteset(self):
+        with self.getCursor() as cursor:
+            cursor.execute("""SELECT json_agg(c) FROM (SELECT * FROM notesets WHERE beat_id = %s) AS c;""", (self.id, ))
+            results = cursor.fetchall()
+        return results[0][0]
+
+
+
+class Song(Model):
+
+    table = "songs"
+
+    @property
+    def filename(self):
+        return self.get('filename')
+
+    @property
+    def title(self):
+        return self.get('title')
+
+    @property
+    def album(self):
+        return self.get('album')
+
+    @property
+    def artist(self):
+        return self.get('artist')
+
+    @property
+    def genre(self):
+        return self.get('genre')
+
+    @property
+    def year(self):
+        return self.get('year')
+
+    def reset(self):
+        with self.getCursor() as cursor:
+            cursor.execute("""
+                DELETE FROM notes WHERE song_id = %s;
+                DELETE FROM notesets WHERE song_id = %s;
+                DELETE FROM beats WHERE song_id = %s;
+            """, (self.id, self.id, self.id,))
+            self.save()
+
+    def createBeat(self, start, end):
+        with self.getCursor() as cursor:
+            cursor.execute("""INSERT INTO beats (song_id, start, "end")
+                                VALUES (%s, %s, %s)
+                                RETURNING id;""",
+                            (self.id, start, end,))
+            results = cursor.fetchone()
+            if not results or 0 == len(results):
+                self.undo()
+                return None
+            self.save()
+        return Beat(results[0], self.getDatabase(), self)
+
+    @property
+    def beats(self):
+        with self.getCursor() as cursor:
+            cursor.execute("""SELECT id FROM beats WHERE song_id = %s;""", (self.id, ))
+            results = cursor.fetchall()
+        return [Beat(id, self.db, self) for id in results]
+
+    def importBeats(self, generator):
+        try:
+            for chunk in generator:
+                print(json.dumps(chunk, separators=(',', ':')))
+                beat = self.createBeat(int(chunk["start"] * 1000), int(chunk["end"] * 1000))
+                beat.importNotes(chunk["notes"])
+                beat.importNoteSet(chunk["noteset"])
+        except Exception as err:
+            print(err)
+            print("Rolling back")
+            self.reset()
+
+
+
+
+
 class Database(object):
 
     def __init__(self, host="localhost", port=5432, dbname="remixerdb", user="remixeruser", password="dev"):
@@ -25,77 +171,39 @@ class Database(object):
             self.options["password"]
         )
 
+    def getCursor(self):
+        return self.conn.cursor()
+
+    def commit(self):
+        self.conn.commit()
+
+    def rollback(self):
+        self.conn.rollback()
+
     def createSong(self, filename, title=None, album=None, artist=None, genre=None, year=None):
-        cursor = self.conn.cursor()
-        cursor.execute("""
-INSERT INTO songs (filename, title, artist, genre, album, year)
-    VALUES (%s, %s, %s, %s, %s, %s)
-    RETURNING id;
-""", (filename, title, artist, genre, album, year,))
-        results = cursor.fetchone()
-        if not results or 0 == len(results):
-            conn.rollback()
-            return None
-        self.conn.commit()
-        cursor.close()
-        return results[0]
-
-    def createBeat(self, songId, start, end):
-        cursor = self.conn.cursor()
-        cursor.execute("""
-INSERT INTO beats (song_id, start, "end")
-    VALUES (%s, %s, %s)
-    RETURNING id;
-""", (songId, start, end,))
-        results = cursor.fetchone()
-        if not results or 0 == len(results):
-            conn.rollback()
-            return None
-        self.conn.commit()
-        cursor.close()
-        return results[0]
-
-    def importNotes(self, songId, beatId, notes):
-        cursor = self.conn.cursor()
-        for note in notes:
-            cursor.execute("""
-INSERT INTO notes (song_id, beat_id, note, "power", frequency)
-    VALUES (%s, %s, %s, %s, %s)
-""", (songId, beatId, note["note"], note["power"], note["frequency"]) )
-        self.conn.commit()
-        cursor.close()
-
-    def importNoteSet(self, songId, beatId, noteset):
-        cursor = self.conn.cursor()
-        for note in noteset:
-            cursor.execute("""
-INSERT INTO notesets (song_id, beat_id, note, "power")
-    VALUES (%s, %s, %s, %s)
-""", (songId, beatId, note["note"], note["power"]) )
-        self.conn.commit()
-        cursor.close()
-
-    def importSongChunks(self, songId, generator):
-
-        try:
-            for chunk in generator:
-                print(json.dumps(chunk, separators=(',', ':')))
-                beatId = self.createBeat(songId, int(chunk["start"] * 1000), int(chunk["end"] * 1000))
-                self.importNotes(songId, beatId, chunk["notes"])
-                self.importNoteSet(songId, beatId, chunk["noteset"])
-
-        except Exception as err:
-            print(err)
-            print("Rolling back")
-            cursor = self.conn.cursor()
-            cursor.execute("""
-DELETE FROM notes WHERE song_id = %s;
-DELETE FROM notesets WHERE song_id = %s;
-DELETE FROM beats WHERE song_id = %s;
-DELETE FROM songs WHERE id = %s;
-            """, (songId, songId, songId, songId))
+        with self.getCursor() as cursor:
+            cursor.execute("""INSERT INTO songs (filename, title, artist, genre, album, year)
+                                VALUES (%s, %s, %s, %s, %s, %s)
+                                RETURNING id;""",
+                            (filename, title, artist, genre, album, year,))
+            results = cursor.fetchone()
+            if not results or 0 == len(results):
+                conn.rollback()
+                return None
             self.conn.commit()
-            cursor.close()
+        return Song(results[0], self)
+
+    def _getSongs(self, query, params):
+        with self.getCursor() as cursor:
+            cursor.execute(query, params)
+            results = cursor.fetchall()
+        return [Song(id, self) for id in results]
+
+    def getSongsByFilename(self, filename):
+        return self._getSongs("""SELECT id FROM songs WHERE filename = %s; """, (filename,) )
+
+    def getSongsByTitle(self, title):
+        return self._getSongs("""SELECT id FROM songs WHERE title = %s; """, (title,) )
 
     def fetchSongsWithNoteSet(self, noteset):
         cursor = self.conn.cursor()
