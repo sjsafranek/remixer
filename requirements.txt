@@ -8,3 +8,4 @@ pydub
 fleep
 psycopg2
 tinytag
+loguru

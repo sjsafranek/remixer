@@ -4,6 +4,7 @@ import copy
 import itertools
 import operator
 import json
+import time
 from math import log2, pow
 
 import numpy as np
@@ -12,6 +13,9 @@ from scipy.io import wavfile
 from scipy.signal import find_peaks
 from audiolazy.lazy_midi import freq2str
 import mingus.core.chords as minguschords
+from loguru import logger
+
+logger.remove()
 
 try:
     from aubio import source, tempo
@@ -49,24 +53,33 @@ def notes_to_chord(notes):
 
 
 def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
+    tic = time.process_time()
     fs_rate, signal = wavfile.read(filename)
+    logger.debug("read file in {:2.1f} ms", 1000 * (time.process_time() - tic))
 
     samples_start = round(fs_rate * seconds_start)
     samples_end = round(fs_rate * seconds_end)
 
     # convert stereo to mono
+    tic = time.process_time()
     try:
-        signal = signal.mean(axis=1)
+        # signal = signal.mean(axis=1) # THIS IS SLOW!
+        signal = (
+            signal[samples_start:samples_end, 0] + signal[samples_start:samples_end, 1]
+        ) / 2
     except:
         pass
+    logger.debug("converted tomono in {:2.1f} ms", 1000 * (time.process_time() - tic))
 
     # generate time in seconds
     t = np.arange(signal.shape[0]) / fs_rate
-    ss = signal[samples_start:samples_end]
+    ss = signal
 
     # generate FFT and frequencies
+    tic = time.process_time()
     sp = np.fft.fft(ss)
     freq = np.fft.fftfreq(len(ss), 1 / fs_rate)
+    logger.debug("fft in {:2.1f} ms", 1000 * (time.process_time() - tic))
     # find first index > 2000 hz
     index2000 = next(x[0] for x in enumerate(freq) if x[1] > 2000)
     freqx = freq[:index2000]
@@ -76,15 +89,15 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
     threshold = np.mean(freqy2) + 3 * np.std(freqy2)
     for i in range(8):
         mi = np.argmax(freqy2)
-        if threshold < freqy2[mi] and freqx[mi] > 100 and mi not in peaks:
+        if threshold < freqy2[mi] and freqx[mi] > 80 and mi not in peaks:
             peaks.append(mi)
-        freqy2[mi - 20 : mi + 20] = 0
+        freqy2[mi - 15 : mi + 15] = 0
 
     if plotit:
         # plot everything
         plt.subplot(211)
         plt.subplots_adjust(hspace=0.7)
-        plt.plot(t[samples_start:samples_end], ss)
+        plt.plot(t, ss)
         plt.xlabel("position (s)")
         plt.ylabel("amplitude")
         plt.title("file '{}'".format(filename))
@@ -123,20 +136,19 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
         final_notes.append(note)
         final_freqs.append(freqx[peak])
         final_powers.append(int(100 * freqy[peak] / max_power))
-        # print(note,freqx[peak],freqy[peak])
+        logger.trace("note: {}, freq: {}, amp: {}", note, freqx[peak], freqy[peak])
         note = "".join([i for i in note if not i.isdigit()])
         if note not in notes:
             notes.append(note)
-    # print("final notes", final_notes)
-    # print("final notes", final_notes)
-    # print("final powers", final_powers)
+    logger.debug("final notes: {}", final_notes)
+    logger.debug("final notes: {}", final_notes)
+    logger.debug("final powers: {}", final_powers)
     noteset = {}
     for i, f in enumerate(final_freqs):
         notename = freq_to_note(f)
         if notename not in noteset:
             noteset[notename] = 0
         noteset[notename] += final_powers[i]
-        # print(i,f,notename,noteset[notename])
     noteset_sum = 0
     for k in noteset:
         if noteset[k] > noteset_sum:
@@ -151,8 +163,8 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
         final_noteset_power.append(a[1])
         if a[1] > 35:
             notes_for_chord.append(a[0])
-    # print("final_noteset", final_noteset)
-    # print("final_noteset_power", final_noteset_power)
+    logger.debug("final_noteset: {}", final_noteset)
+    logger.debug("final_noteset_power: {}", final_noteset_power)
     final_chord = notes_to_chord(notes_for_chord)
     if plotit:
         plt.title("chord guess: '{}'".format(final_chord))
@@ -222,8 +234,6 @@ def get_file_beats(path, params=None):
         if is_beat:
             this_beat = o.get_last_s()
             beats.append(this_beat)
-            # if o.get_confidence() > .2 and len(beats) > 2.:
-            #    break
         total_frames += read
         if read < hop_s:
             break
@@ -232,6 +242,15 @@ def get_file_beats(path, params=None):
 
 
 if __name__ == "__main__":
+    # this line adds debugging
+    debugging = True
+    if debugging:
+        logger.add(
+            sys.stderr,
+            format="<blue>{level}</blue> {function}:{line} {message}",
+            level="TRACE",
+        )
+    tic = time.process_time()
     print(
         json.dumps(
             get_notes_and_chord(
@@ -240,3 +259,4 @@ if __name__ == "__main__":
             indent=2,
         )
     )
+    logger.debug("ran in {:2.1f} ms", 1000 * (time.process_time() - tic))
