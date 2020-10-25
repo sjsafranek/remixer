@@ -1,7 +1,9 @@
+import sys
 import math
 import copy
 import itertools
 import operator
+import json
 from math import log2, pow
 
 import numpy as np
@@ -76,7 +78,7 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
         mi = np.argmax(freqy2)
         if threshold < freqy2[mi] and freqx[mi] > 100 and mi not in peaks:
             peaks.append(mi)
-        freqy2[mi - 50 : mi + 50] = 0
+        freqy2[mi - 20 : mi + 20] = 0
 
     if plotit:
         # plot everything
@@ -106,14 +108,14 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
             noteoffset = -1 * float(noteoffset.split("-")[1])
         else:
             continue
-        if abs(noteoffset) > 10:
+        if abs(noteoffset) > 15:
             continue
         if plotit:
             plt.text(
                 freqx[peak] + 50,
                 freqy[peak] * 0.95,
-                "{:2.1f} ({})".format(freqx[peak], note),
-                fontsize=10,
+                note,
+                fontsize=8,
             )
         if max_power == 0:
             max_power = freqy[peak]
@@ -121,20 +123,20 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
         final_notes.append(note)
         final_freqs.append(freqx[peak])
         final_powers.append(int(100 * freqy[peak] / max_power))
+        # print(note,freqx[peak],freqy[peak])
         note = "".join([i for i in note if not i.isdigit()])
         if note not in notes:
             notes.append(note)
     # print("final notes", final_notes)
     # print("final notes", final_notes)
     # print("final powers", final_powers)
-    freqs = copy.copy(final_freqs)
-    freqs.sort()
     noteset = {}
-    for i, f in enumerate(freqs):
+    for i, f in enumerate(final_freqs):
         notename = freq_to_note(f)
         if notename not in noteset:
             noteset[notename] = 0
         noteset[notename] += final_powers[i]
+        # print(i,f,notename,noteset[notename])
     noteset_sum = 0
     for k in noteset:
         if noteset[k] > noteset_sum:
@@ -143,12 +145,15 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
         noteset[k] = int(100 * noteset[k] / noteset_sum)
     final_noteset = []
     final_noteset_power = []
+    notes_for_chord = []
     for a in sorted(noteset.items(), key=operator.itemgetter(1), reverse=True):
         final_noteset.append(a[0])
         final_noteset_power.append(a[1])
+        if a[1] > 35:
+            notes_for_chord.append(a[0])
     # print("final_noteset", final_noteset)
     # print("final_noteset_power", final_noteset_power)
-    final_chord = notes_to_chord(final_noteset)
+    final_chord = notes_to_chord(notes_for_chord)
     if plotit:
         plt.title("chord guess: '{}'".format(final_chord))
         plt.show()
@@ -172,15 +177,6 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
             {"note": final_noteset[i], "power": final_noteset_power[i]}
         )
     return data
-
-
-# seconds_start = 26.98
-# seconds_end = 32.517
-# filename = "ear.wav"
-# seconds_start = 23.381
-# seconds_end = 25.330
-# filename = "cmajor.wav"
-# print(get_notes_and_chord(filename, seconds_start, seconds_end, plotit=True))
 
 
 def get_file_beats(path, params=None):
@@ -233,3 +229,14 @@ def get_file_beats(path, params=None):
             break
 
     return beats
+
+
+if __name__ == "__main__":
+    print(
+        json.dumps(
+            get_notes_and_chord(
+                sys.argv[1], float(sys.argv[2]), float(sys.argv[3]), plotit=True
+            ),
+            indent=2,
+        )
+    )
