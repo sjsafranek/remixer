@@ -26,10 +26,14 @@ from .music import getChordFromNotes
 class AudioAnalyzer(object):
 
     def __init__(self, filename):
-        self.filename = filename
+        self._filename = filename
         fs_rate, signal = wavfile.read(filename)
         self.fs_rate = fs_rate
         self.signal = signal
+
+    @property
+    def filename(self):
+        return self._filename
 
     def getBeatsWithNotes(self):
         beats = self.getBeats()

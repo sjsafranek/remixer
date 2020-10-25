@@ -4,7 +4,6 @@ import traceback
 from src import cmd
 from src.audiofile import AudioFile
 from src import database
-# from src import pipeline_wav
 from src.analyze_wav import AudioAnalyzer
 
 

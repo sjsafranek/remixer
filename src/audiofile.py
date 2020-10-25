@@ -10,7 +10,7 @@ from pydub import AudioSegment
 class AudioFile(object):
 
     def __init__(self, filename):
-        self.filename = filename
+        self._filename = filename
 
         # get file info
         with open(self.filename, "rb") as file:
@@ -22,6 +22,10 @@ class AudioFile(object):
 
         # open audio segment
         self._audio = AudioSegment.from_file(self.filename, format = self.format)
+
+    @property
+    def filename(self):
+        return self._filename
 
     @property
     def tags(self):
