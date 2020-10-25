@@ -1,8 +1,6 @@
 import json
-
 from src import cmd
 from src import database
-from src import pipeline_wav
 
 
 if __name__ == "__main__":
