@@ -24,16 +24,19 @@ try:
 except:
     pass
 
+
 def ks_key(notes):
     name = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
-    X = np.array([0]*len(name))
+    X = np.array([0] * len(name))
     for _, note in enumerate(notes):
         X[name.index(note)] += 1
     # https://gist.github.com/bmcfee/1f66825cef2eb34c839b42dddbad49fd
     X = scipy.stats.zscore(X)
     # Coefficients from Kumhansl and Schmuckler
     # as reported here: http://rnhart.net/articles/key-finding/
-    major = np.asarray([6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88])
+    major = np.asarray(
+        [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88]
+    )
     major = scipy.stats.zscore(major)
     major = scipy.linalg.circulant(major)
     major = major.T.dot(X)

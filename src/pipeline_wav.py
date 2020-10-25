@@ -1,5 +1,5 @@
-
 from .analyze_wav import *
+
 
 def pipeline_wav(filename):
     beats = get_file_beats(filename)
