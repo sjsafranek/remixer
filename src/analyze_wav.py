@@ -125,14 +125,13 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
             continue
         if plotit:
             plt.text(
-                freqx[peak] + 50,
-                freqy[peak] * 0.95,
-                note,
-                fontsize=8,
+                freqx[peak] + 50, freqy[peak] * 0.95, note, fontsize=8,
             )
         if max_power == 0:
             max_power = freqy[peak]
         note = note.split("+")[0].split("-")[0]
+        if note in final_notes:
+            continue
         final_notes.append(note)
         final_freqs.append(freqx[peak])
         final_powers.append(int(100 * freqy[peak] / max_power))
