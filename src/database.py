@@ -223,9 +223,16 @@ class Database(object):
         cursor.execute("""
             SELECT json_agg(c) FROM (
                 SELECT
-                    (SELECT sv.song_json FROM songs_view AS sv WHERE sv.id = songs.id) AS song,
+                    (
+                        SELECT sv1.song_json
+                        FROM songs_view AS sv1
+                        WHERE sv1.id = songs.id
+                    ) AS song,
                     count(*) AS matches,
-                    (SELECT count(*) FROM beats AS b2 WHERE b2.song_id = songs.id) AS total
+                    (
+                        SELECT count(*) FROM beats AS b1
+                        WHERE b1.song_id = songs.id
+                    ) AS total
                 FROM beats AS beats
                 LEFT JOIN songs AS songs
                     ON beats.song_id = songs.id
