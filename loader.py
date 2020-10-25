@@ -1,9 +1,12 @@
 import tempfile
+import traceback
 
 from src import cmd
 from src.audiofile import AudioFile
 from src import database
-from src import pipeline_wav
+# from src import pipeline_wav
+from src.analyze_wav import AudioAnalyzer
+
 
 
 if __name__ == "__main__":
@@ -36,7 +39,8 @@ if __name__ == "__main__":
             fname = fileHandler.name
 
         # Make the generator
-        generator = pipeline_wav.pipeline_wav(fname)
+        aa = AudioAnalyzer(fname)
+        generator = aa.getBeats()
 
         # Don't import data if running a dry run
         if args.dryrun:
@@ -55,4 +59,8 @@ if __name__ == "__main__":
         )
 
         # Read file and insert chunks to database
-        song.importBeats(generator)
+        try:
+            song.importBeats(generator)
+        except Exception as e:
+            print(e)
+            print(traceback.print_tb)
