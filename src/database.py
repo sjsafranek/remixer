@@ -1,7 +1,7 @@
 import json
 import psycopg2
 
-import .analyze_wav import ks_key
+from .analyze_wav import ks_key
 
 
 class Collection(object):
