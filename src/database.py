@@ -4,6 +4,16 @@ import psycopg2
 
 
 
+
+class Collection(object):
+
+    def __init__(self, models):
+        self.models = models
+
+
+
+
+
 class Model(object):
 
     def __init__(self, id, db):
@@ -131,7 +141,7 @@ class Song(Model):
         with self.getCursor() as cursor:
             cursor.execute("""SELECT id FROM beats WHERE song_id = %s;""", (self.id, ))
             results = cursor.fetchall()
-        return [Beat(id, self.db, self) for id in results]
+        return Collection([Beat(id, self.db, self) for id in results])
 
     def importBeats(self, generator):
         try:
@@ -197,13 +207,16 @@ class Database(object):
         with self.getCursor() as cursor:
             cursor.execute(query, params)
             results = cursor.fetchall()
-        return [Song(id, self) for id in results]
+        return Collection([Song(id, self) for id in results])
 
     def getSongsByFilename(self, filename):
-        return self._getSongs("""SELECT id FROM songs WHERE filename = %s; """, (filename,) )
+        return self._getSongs("""SELECT id FROM songs WHERE filename = %s;""", (filename,) )
 
     def getSongsByTitle(self, title):
-        return self._getSongs("""SELECT id FROM songs WHERE title = %s; """, (title,) )
+        return self._getSongs("""SELECT id FROM songs WHERE title = %s;""", (title,) )
+
+    def getSongsById(self, id):
+        return self._getSongs("""SELECT id FROM songs WHERE id = %s;""", (id,) )
 
     def fetchSongsWithNoteSet(self, noteset):
         cursor = self.conn.cursor()
@@ -213,10 +226,18 @@ class Database(object):
                     (SELECT sv.song_json FROM songs_view AS sv WHERE sv.id = songs.id) AS song,
                     count(*) AS matches,
                     (SELECT count(*) FROM beats AS b2 WHERE b2.song_id = songs.id) AS total
-                FROM beats
-                LEFT JOIN songs AS songs ON notes.song_id = songs.id
+                FROM beats AS beats
+                LEFT JOIN songs AS songs
+                    ON beats.song_id = songs.id
                 WHERE
-                    %s::JSONB <@ noteset
+                    %s::JSONB <@ (
+                        SELECT to_jsonb(n.noteset) FROM (
+                            SELECT array_agg(notesets.note) AS noteset
+                            FROM notesets
+                            WHERE notesets.beat_id = beats.id
+                            GROUP BY notesets.beat_id
+                        ) AS n
+                    )
                 GROUP BY songs.id
             ) AS c;
         """, (json.dumps(noteset),))
