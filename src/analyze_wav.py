@@ -40,7 +40,13 @@ def ks_key(notes):
     major = scipy.stats.zscore(major)
     major = scipy.linalg.circulant(major)
     major = major.T.dot(X)
-    return name[np.argmax(major)]
+    minor = np.asarray(
+        [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17]
+    )
+    minor = scipy.stats.zscore(minor)
+    minor = scipy.linalg.circulant(minor)
+    minor = minor.T.dot(X)
+    return name[np.argmax(minor)]
 
 
 def freq_to_note(freq):
@@ -145,7 +151,10 @@ def get_notes_and_chord(filename, seconds_start, seconds_end, plotit=False):
             continue
         if plotit:
             plt.text(
-                freqx[peak] + 50, freqy[peak] * 0.95, note, fontsize=8,
+                freqx[peak] + 50,
+                freqy[peak] * 0.95,
+                note,
+                fontsize=8,
             )
         if max_power == 0:
             max_power = freqy[peak]
