@@ -85,4 +85,4 @@ class AudioFile(object):
 if __name__ == "__main__":
     # this line adds debugging
     a = AudioFile(sys.argv[1])
-    a.splice(1000,2000,out_filename="test.mp3",out_format="mp3")
+    a.splice(sys.argv[2],sys.argv[3],out_filename="test.mp3",out_format="mp3")
