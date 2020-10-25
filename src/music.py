@@ -1,6 +1,41 @@
+import itertools
+import operator
+from math import log2
+
 import numpy as np
 import scipy.stats
 import scipy.linalg
+import mingus.core.chords as minguschords
+
+
+
+def getChordFromNotes(notes):
+    chords = {}
+    for notelist in itertools.permutations(notes):
+        notelist = list(notelist)
+        chord = minguschords.determine(notelist, True)
+        if len(chord) == 0:
+            continue
+        if chord[0] not in chords:
+            chords[chord[0]] = 0
+        chords[chord[0]] += 1
+    sorted_d = sorted(chords.items(), key=operator.itemgetter(1))
+    try:
+        c = sorted_d[0][0]
+        if c == "perfect fourth" or c == "perfect fifth":
+            c = notes[0] + c
+        return c
+    except:
+        return "".join(notes)
+
+
+def getNoteFromFrequency(freq):
+    A4 = 440
+    C0 = A4 * pow(2, -4.75)
+    name = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+    h = round(12 * log2(freq / C0))
+    n = h % 12
+    return name[n]
 
 
 def getKeyFromNotes(notes):

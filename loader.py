@@ -40,7 +40,7 @@ if __name__ == "__main__":
 
         # Make the generator
         aa = AudioAnalyzer(fname)
-        generator = aa.getBeats()
+        generator = aa.getBeatsWithNotes()
 
         # Don't import data if running a dry run
         if args.dryrun:
