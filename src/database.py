@@ -1,7 +1,7 @@
 import json
 import psycopg2
 
-from .analyze_wav import ks_key
+import .analyze_wav import ks_key
 
 
 class Collection(object):
@@ -13,6 +13,11 @@ class Collection(object):
 
 
 class Model(object):
+
+    table = None
+
+    columns = []
+
     def __init__(self, id, db):
         self.id = id
         self.db = db
@@ -39,14 +44,16 @@ class Model(object):
     def undo(self):
         self.getDatabase().rollback()
 
-    def get(self, columnId):
+    def get(self, columns=[]):
+        if list == type(columns):
+            column = ",".join(columns)
         with self.getCursor() as cursor:
             cursor.execute(
-                """SELECT {0} FROM {1} WHERE id = %s;""".format(columnId, self.table),
+                """SELECT {0} FROM {1} WHERE id = %s;""".format(column, self.table),
                 (self.id,),
             )
             results = cursor.fetchone()
-        return results[0]
+        return results
 
     def delete(self):
         with self.getCursor() as cursor:
@@ -55,14 +62,33 @@ class Model(object):
             )
             self.save()
 
+    def toDict(self):
+        values = self.get(columns = self.columns)
+        return {self.columns[i]: values[i] for i in range(len(self.columns))}
+
+
 
 class Beat(Model):
 
     table = "beats"
 
+    columns = [
+        'id',
+        'end',
+        'start'
+    ]
+
     def __init__(self, id, db, song):
         super(Beat, self).__init__(id, db)
         self.song = song
+
+    @property
+    def end(self):
+        return self.get('end')[0]
+
+    @property
+    def start(self):
+        return self.get('start')[0]
 
     def importNotes(self, notes):
         with self.getCursor() as cursor:
@@ -109,33 +135,44 @@ class Song(Model):
 
     table = "songs"
 
+    columns = [
+        'id',
+        'filename',
+        'title',
+        'album',
+        'artist',
+        'genre',
+        'year',
+        'key'
+    ]
+
     @property
     def filename(self):
-        return self.get("filename")
+        return self.get(columns=['filename'])[0]
 
     @property
     def title(self):
-        return self.get("title")
+        return self.get(columns=['title'])[0]
 
     @property
     def album(self):
-        return self.get("album")
+        return self.get(columns=['album'])[0]
 
     @property
     def artist(self):
-        return self.get("artist")
+        return self.get(columns=['artist'])[0]
 
     @property
     def genre(self):
-        return self.get("genre")
+        return self.get(columns=['genre'])[0]
 
     @property
     def year(self):
-        return self.get("year")
+        return self.get(columns=['year'])[0]
 
     @property
     def key(self):
-        return self.get("key")
+        return self.get(columns=['key'])[0]
 
     def reset(self):
         with self.getCursor() as cursor:
@@ -183,7 +220,6 @@ class Song(Model):
                     all_notes.append(chunk["noteset"][0]["note"])
             key = ks_key(all_notes)
             self.set("key", key)
-
         except Exception as err:
             print(err)
             print("Rolling back")
@@ -261,125 +297,53 @@ class Database(object):
     def getSongsById(self, id):
         return self._getSongs("""SELECT id FROM songs WHERE id = %s;""", (id,))
 
-    def fetchSongsWithNoteSet__depricated(self, noteset, minPower=1, maxPower=100):
-        cursor = self.conn.cursor()
-        cursor.execute(
-            """
-            SELECT json_agg(c) FROM (
-                SELECT
-                    count(*) AS matches,
-                    (
-                        SELECT
-                            count(*)
-                        FROM beats AS b1
-                        WHERE b1.song_id = songs.id
-                    ) AS total,
-                    (
-                        SELECT
-                            sv1.song_json
-                        FROM songs_view AS sv1
-                        WHERE sv1.id = songs.id
-                    ) AS song
-                FROM beats AS beats
-                LEFT JOIN songs AS songs
-                    ON beats.song_id = songs.id
-                WHERE
-                    %s::JSONB <@ (
-                        SELECT to_jsonb(n.noteset) FROM (
-                            SELECT
-                                array_agg(notesets.note) AS noteset
-                            FROM notesets
-                            WHERE
-                                notesets.beat_id = beats.id
-                            GROUP BY notesets.beat_id
-                        ) AS n
-                    )
-                GROUP BY songs.id
-            ) AS c;
-        """,
-            (json.dumps(noteset),),
-        )
-        results = cursor.fetchone()
-        if not results or 0 == len(results):
-            return None
-        cursor.close()
-        return results[0]
-
+    # def fetchSongsWithNoteSet__depricated(self, noteset, minPower=1, maxPower=100):
+    #     cursor = self.conn.cursor()
+    #     cursor.execute(
+    #         """
+    #         SELECT json_agg(c) FROM (
+    #             SELECT
+    #                 count(*) AS matches,
+    #                 (
+    #                     SELECT
+    #                         count(*)
+    #                     FROM beats AS b1
+    #                     WHERE b1.song_id = songs.id
+    #                 ) AS total,
+    #                 (
+    #                     SELECT
+    #                         sv1.song_json
+    #                     FROM songs_view AS sv1
+    #                     WHERE sv1.id = songs.id
+    #                 ) AS song
+    #             FROM beats AS beats
+    #             LEFT JOIN songs AS songs
+    #                 ON beats.song_id = songs.id
+    #             WHERE
+    #                 %s::JSONB <@ (
+    #                     SELECT to_jsonb(n.noteset) FROM (
+    #                         SELECT
+    #                             array_agg(notesets.note) AS noteset
+    #                         FROM notesets
+    #                         WHERE
+    #                             notesets.beat_id = beats.id
+    #                         GROUP BY notesets.beat_id
+    #                     ) AS n
+    #                 )
+    #             GROUP BY songs.id
+    #         ) AS c;
+    #     """,
+    #         (json.dumps(noteset),),
+    #     )
+    #     results = cursor.fetchone()
+    #     if not results or 0 == len(results):
+    #         return None
+    #     cursor.close()
+    #     return results[0]
 
     def fetchSongsWithNoteSet(self, noteset, minPower=1, maxPower=100):
         cursor = self.conn.cursor()
         cursor.execute(
-#             """
-# WITH song_beat_ids AS (
-#         SELECT
-#             songs.id AS song_id,
-#             beats.id AS beat_id
-#         FROM beats AS beats
-#         LEFT JOIN songs AS songs
-#             ON beats.song_id = songs.id
-#         LEFT JOIN notesets AS notesets
-#             ON notesets.beat_id = beats.id
-#         WHERE
-#             %s::JSONB <@ (
-#                 SELECT to_jsonb(n.noteset) FROM (
-#                     SELECT
-#                         array_agg(notesets.note) AS noteset
-#                     FROM notesets
-#                     WHERE
-#                         notesets.beat_id = beats.id
-#                     GROUP BY notesets.beat_id
-#                 ) AS n
-#             )
-#         GROUP BY songs.id, beats.id
-#     ),
-#     song_beats_with_notes AS (
-#         SELECT
-#             song_beat_ids.song_id,
-#             song_beat_ids.beat_id,
-            # (
-            #     SELECT json_agg(n) FROM (
-            #         SELECT notesets.note, notesets.power FROM notesets WHERE notesets.beat_id = song_beat_ids.beat_id
-            #     ) AS n
-            # ) AS noteset,
-            # (
-            #     SELECT json_agg(n) FROM (
-            #         SELECT notes.note, notes.power, notes.frequency FROM notes WHERE notes.beat_id = song_beat_ids.beat_id
-            #     ) AS n
-            # ) AS notes
-#         FROM song_beat_ids
-#         GROUP BY song_beat_ids.song_id, song_beat_ids.beat_id
-#     ),
-#     song_beats_with_note_objects AS (
-#         SELECT
-#             song_beats_with_notes.song_id,
-#             song_beats_with_notes.beat_id,
-#             json_build_object(
-#                 'beat_id', song_beats_with_notes.beat_id,
-#                 'start', beats.start,
-#                 'end', beats.end,
-#                 'notes', song_beats_with_notes.notes,
-#                 'noteset', song_beats_with_notes.noteset
-#             ) AS beat
-#         FROM song_beats_with_notes
-#         INNER JOIN beats
-#             ON beats.id = song_beats_with_notes.beat_id
-#     ),
-#     song_beat_objects AS (
-#         SELECT
-#             song_beats_with_note_objects.song_id,
-#             json_agg(song_beats_with_note_objects.beat) AS beats
-#         FROM song_beats_with_note_objects
-#         GROUP BY song_beats_with_note_objects.song_id
-#     )
-# SELECT
-#     json_build_object(
-#         'song', songs_view.song_json,
-#         'beats', song_beat_objects
-#     )
-# FROM song_beat_objects
-# INNER JOIN songs_view
-#     ON songs_view.id = song_beat_objects.song_id;
-#         """,
 """
 WITH song_beat_ids AS (
         SELECT
