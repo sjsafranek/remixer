@@ -107,7 +107,7 @@ SELECT json_agg(c) FROM (
 
 EXPLAIN ANALYZE
 
-WITH matching_song_beats AS (
+WITH song_beat_ids AS (
         SELECT
             songs.id AS song_id,
             beats.id AS beat_id
@@ -129,72 +129,69 @@ WITH matching_song_beats AS (
             )
         GROUP BY songs.id, beats.id
     ),
-    song_beats AS (
+    song_beats_with_notes AS (
         SELECT
-            matching_song_beats.song_id,
-            matching_song_beats.beat_id,
-            json_agg(notesets.*) AS noteset,
-            json_agg(notes.*) AS notes
-        FROM matching_song_beats
-        LEFT JOIN notesets
-            ON notesets.beat_id = matching_song_beats.beat_id
-        LEFT JOIN notes
-            ON notes.beat_id = matching_song_beats.beat_id
-        GROUP BY matching_song_beats.song_id, matching_song_beats.beat_id
+            song_beat_ids.song_id,
+            song_beat_ids.beat_id,
+            (
+                SELECT json_agg(n) FROM (
+                    SELECT notesets.note, notesets.power FROM notesets WHERE notesets.beat_id = song_beat_ids.beat_id
+                ) AS n
+            ) AS noteset,
+            (
+                SELECT json_agg(n) FROM (
+                    SELECT notes.note, notes.power, notes.frequency FROM notes WHERE notes.beat_id = song_beat_ids.beat_id
+                ) AS n
+            ) AS notes
+        FROM song_beat_ids
+        GROUP BY song_beat_ids.song_id, song_beat_ids.beat_id
     ),
-    song_beats_full AS (
+    -- song_beats_with_note_objects AS (
+    --     SELECT
+    --         song_beats_with_notes.song_id,
+    --         song_beats_with_notes.beat_id,
+    --         json_build_object(
+    --             'beat_id', song_beats_with_notes.beat_id,
+    --             'start', beats.start,
+    --             'end', beats.end,
+    --             'notes', song_beats_with_notes.notes,
+    --             'noteset', song_beats_with_notes.noteset
+    --         ) AS beat
+    --     FROM song_beats_with_notes
+    --     INNER JOIN beats
+    --         ON beats.id = song_beats_with_notes.beat_id
+    -- ),
+    -- song_beat_objects AS (
+    --     SELECT
+    --         song_beats_with_note_objects.song_id,
+    --         json_agg(song_beats_with_note_objects.beat) AS beats
+    --     FROM song_beats_with_note_objects
+    --     GROUP BY song_beats_with_note_objects.song_id
+    -- )
+    song_beat_objects AS (
         SELECT
-            song_beats.song_id,
-            song_beats.beat_id,
-            json_build_object(
-                'id', song_beats.beat_id,
-                'start', beats.start,
-                'end', beats.end,
-                'notes', song_beats.notes,
-                'noteset', song_beats.noteset
-            ) AS beat
-        FROM song_beats
+            song_beats_with_notes.song_id,
+            json_agg(
+                json_build_object(
+                    'beat_id', song_beats_with_notes.beat_id,
+                    'start', beats.start,
+                    'end', beats.end,
+                    'notes', song_beats_with_notes.notes,
+                    'noteset', song_beats_with_notes.noteset
+                )
+            ) AS beats
+        FROM song_beats_with_notes
         INNER JOIN beats
-            ON beats.id = song_beats.beat_id
+            ON beats.id = song_beats_with_notes.beat_id
+        GROUP BY song_beats_with_notes.song_id
     )
-
---
-SELECT * FROM song_beats_full;
-
-SELECT json_agg(c) FROM (
-    SELECT * FROM song_beats_full
-) AS c;
-
-
-
-
-
 SELECT
-    count(DISTINCT songbeats.beat_id) AS matches,
-    (
-        SELECT
-            count(*)
-        FROM beats AS b1
-        WHERE b1.song_id = songbeats.song_id
-    ) AS total,
-    (
-        SELECT
-            sv1.song_json
-        FROM songs_view AS sv1
-        WHERE sv1.id = songbeats.song_id
-    ) AS song,
-    noteset,
-    notes
-FROM song_beats AS songbeats GROUP BY song_id, noteset, notes;
-
-
-
-
-
-
-
-
-SELECT json_agg(c) FROM (
-
-
-) AS c;
+    json_agg(
+        json_build_object(
+            'song', songs_view.song_json,
+            'beats', song_beat_objects.beats
+        )
+    )
+FROM song_beat_objects
+INNER JOIN songs_view
+    ON songs_view.id = song_beat_objects.song_id;
