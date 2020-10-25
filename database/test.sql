@@ -141,11 +141,31 @@ WITH matching_song_beats AS (
         LEFT JOIN notes
             ON notes.beat_id = matching_song_beats.beat_id
         GROUP BY matching_song_beats.song_id, matching_song_beats.beat_id
+    ),
+    song_beats_full AS (
+        SELECT
+            song_beats.song_id,
+            song_beats.beat_id,
+            json_build_object(
+                'id', song_beats.beat_id,
+                'start', beats.start,
+                'end', beats.end,
+                'notes', song_beats.notes,
+                'noteset', song_beats.noteset
+            ) AS beat
+        FROM song_beats
+        INNER JOIN beats
+            ON beats.id = song_beats.beat_id
     )
 
+--
+SELECT * FROM song_beats_full;
 
--- SELECT * FROM matching_song_beats;
-SELECT * FROM song_beats;
+SELECT json_agg(c) FROM (
+    SELECT * FROM song_beats_full
+) AS c;
+
+
 
 
 
@@ -163,20 +183,9 @@ SELECT
         FROM songs_view AS sv1
         WHERE sv1.id = songbeats.song_id
     ) AS song,
-    (
-        SELECT
-
-        FROM
-    )
-    -- json_agg(
-    --     json_build_object(
-    --         'id', beats.id,
-    --         'song_id', beats.song_id,
-    --         'start', beats.start,
-    --         'end', beats.end
-    --     )
-    -- ) AS beats
-FROM matching_song_beats AS songbeats GROUP BY song_id;
+    noteset,
+    notes
+FROM song_beats AS songbeats GROUP BY song_id, noteset, notes;
 
 
 
