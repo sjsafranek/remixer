@@ -1,7 +1,7 @@
 import json
 import psycopg2
 
-from .analyze_wav import ks_key
+from .music import getKeyFromNotes
 
 
 class Collection(object):
@@ -218,7 +218,7 @@ class Song(Model):
                 beat.importNoteSet(chunk["noteset"])
                 if len(chunk["noteset"]) > 0:
                     all_notes.append(chunk["noteset"][0]["note"])
-            key = ks_key(all_notes)
+            key = getKeyFromNotes(all_notes)
             self.set("key", key)
         except Exception as err:
             print(err)
