@@ -1,6 +1,7 @@
+import tempfile
 
 from src import cmd
-from src import utils
+from src.audiofile import AudioFile
 from src import database
 from src import pipeline_wav
 
@@ -25,31 +26,33 @@ if __name__ == "__main__":
     )
 
     filename = args.file
+    fname = filename
+    afile = AudioFile(filename)
 
-    def ingestSong(tmpfile):
+    # Create temp file
+    with tempfile.NamedTemporaryFile(mode="wb") as fileHandler:
 
-        generator = pipeline_wav.pipeline_wav(tmpfile)
+        if afile.convert(out_filehandler = fileHandler, out_format="wav"):
+            fname = fileHandler.name
 
+        # Make the generator
+        generator = pipeline_wav.pipeline_wav(fname)
+
+        # Don't import data if running a dry run
         if args.dryrun:
             for chunk in generator:
                 print(chunk)
-            return
-
-        # Collect metadata tags
-        tags = utils.getAudioTags(filename)
+            exit()
 
         # Create song record
         song = db.createSong(
             filename,
-            title=tags.title,
-            album = tags.album,
-            artist = tags.artist,
-            genre = tags.genre,
-            year = tags.year
+            title = afile.tags.title,
+            album = afile.tags.album,
+            artist = afile.tags.artist,
+            genre = afile.tags.genre,
+            year = afile.tags.year
         )
 
         # Read file and insert chunks to database
         song.importBeats(generator)
-
-    # Convert to WAV file if needed
-    utils.convertAudioToWav(filename, callback=ingestSong)

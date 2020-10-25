@@ -1,7 +1,6 @@
 import json
 
 from src import cmd
-from src import utils
 from src import database
 from src import pipeline_wav
 
