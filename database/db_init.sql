@@ -53,6 +53,7 @@ CREATE TABLE IF NOT EXISTS songs (
     album                   VARCHAR,
     year                    INTEGER,
     url                     URL,
+    key                     VARCHAR,
     created_at              TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -111,13 +112,11 @@ DROP TABLE IF EXISTS notes CASCADE;
 
 CREATE TABLE IF NOT EXISTS notes (
     beat_id             INTEGER NOT NULL,
-    song_id             INTEGER NOT NULL,
     note                VARCHAR,
     frequency           REAL,
     "power"             INTEGER,
     FOREIGN KEY (beat_id) REFERENCES beats(id) ON DELETE CASCADE,
-    FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
-    UNIQUE(beat_id, song_id, note)
+    UNIQUE(beat_id, note)
 );
 
 
@@ -126,12 +125,10 @@ DROP TABLE IF EXISTS notesets CASCADE;
 
 CREATE TABLE IF NOT EXISTS notesets (
     beat_id             INTEGER NOT NULL,
-    song_id             INTEGER NOT NULL,
     note                VARCHAR,
     "power"             VARCHAR,
     FOREIGN KEY (beat_id) REFERENCES beats(id) ON DELETE CASCADE,
-    FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
-    UNIQUE(beat_id, song_id, note)
+    UNIQUE(beat_id, note)
 );
 
 

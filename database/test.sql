@@ -1,123 +1,191 @@
 -- https://www.postgresql.org/docs/12/functions-array.html
 
 
-SELECT * FROM notes;
 
-
-
--- Select every record with at least a G# and B
-SELECT
-    songs.*, count(*)
-FROM notes
-LEFT JOIN songs ON notes.song_id = songs.id
-WHERE
-    ARRAY['G#','B'] <@ jsonb_array_cast2text(noteset)
-GROUP BY songs.id
-;
-
-
-
-
-SELECT
-    json_build_object(
-        'song', json_build_object(
-            'id', songs.id,
-            'name', songs.name,
-            'artist', songs.artist,
-            'genre', songs.genre,
-            'url', songs.url,
-            'created_at', to_char(songs.created_at, 'YYYY-MM-DD"T"HH:MI:SS"Z"'),
-            'updated_at', to_char(songs.updated_at, 'YYYY-MM-DD"T"HH:MI:SS"Z"')
-        ),
-        'matches', count(*),
-        'total', (SELECT count(*) FROM notes AS n2 WHERE n2.song_id = songs.id)
-    ) AS song
-FROM notes
-LEFT JOIN songs ON notes.song_id = songs.id
-WHERE
-    '["G#","B"]'::JSONB <@ noteset
-GROUP BY songs.id
-;
-
-
-
-
-SELECT
-    json_build_object(
-        'song',  (SELECT sv.song_json FROM songs_view AS sv WHERE sv.id = songs.id),
-        'matches', count(*),
-        'total', (SELECT count(*) FROM notes AS n2 WHERE n2.song_id = songs.id)
-    ) AS song
-FROM notes
-LEFT JOIN songs AS songs ON notes.song_id = songs.id
-WHERE
-    '["G#","B"]'::JSONB <@ noteset
-GROUP BY songs.id
-;
-
-
-
+EXPLAIN ANALYZE
 SELECT json_agg(c) FROM (
     SELECT
-        json_build_object(
-            'song',  (SELECT sv.song_json FROM songs_view AS sv WHERE sv.id = songs.id),
-            'matches', count(*),
-            'total', (SELECT count(*) FROM notes AS n2 WHERE n2.song_id = songs.id)
-        ) AS song
-    FROM notes
-    LEFT JOIN songs AS songs ON notes.song_id = songs.id
-    WHERE
-        '["G#","B"]'::JSONB <@ noteset
-    GROUP BY songs.id
-) AS c;
-
-
-
-
-
-
-
-
-
-
-
-
-SELECT json_agg(c) FROM (
-    SELECT
-        -- json_build_object(
-            -- 'song',  (SELECT sv.song_json FROM songs_view AS sv WHERE sv.id = songs.id),
-            (SELECT sv.song_json FROM songs_view AS sv WHERE sv.id = songs.id) AS song,
-            count(*) as matches,
-            (SELECT count(*) FROM notes AS n2 WHERE n2.song_id = songs.id) as total
-        -- ) AS song
-    FROM notes
-    LEFT JOIN songs AS songs ON notes.song_id = songs.id
-    WHERE
-        '["G#","B"]'::JSONB <@ noteset
-    GROUP BY songs.id
-) AS c;
-
-
-
-
-
-
-
-
-
-
-
-
-
-SELECT json_agg(c) FROM (
-    SELECT
-        (SELECT sv.song_json FROM songs_view AS sv WHERE sv.id = songs.id) AS song,
         count(*) AS matches,
-        (SELECT count(*) FROM beats AS b2 WHERE b2.song_id = songs.id) AS total
+        (
+            SELECT
+                count(*)
+            FROM beats AS b1
+            WHERE b1.song_id = songs.id
+        ) AS total,
+        (
+            SELECT
+                sv1.song_json
+            FROM songs_view AS sv1
+            WHERE sv1.id = songs.id
+        ) AS song
     FROM beats AS beats
     LEFT JOIN songs AS songs
         ON beats.song_id = songs.id
     WHERE
-        '["G#","B"]'::JSONB <@ (SELECT to_jsonb(n.noteset) FROM (SELECT array_agg(notesets.note) AS noteset FROM notesets WHERE notesets.beat_id = beats.id GROUP BY notesets.beat_id) AS n)
+        '["G#","B"]'::JSONB <@ (
+            SELECT to_jsonb(n.noteset) FROM (
+                SELECT
+                    array_agg(notesets.note) AS noteset
+                FROM notesets
+                WHERE
+                    notesets.beat_id = beats.id
+                GROUP BY notesets.beat_id
+            ) AS n
+        )
     GROUP BY songs.id
+) AS c;
+
+
+
+
+
+
+EXPLAIN ANALYZE
+SELECT json_agg(c) FROM (
+    SELECT
+        count(DISTINCT beat_id) AS matches,
+        (
+            SELECT
+                count(*)
+            FROM beats AS b1
+            WHERE b1.song_id = songs.id
+        ) AS total,
+        (
+            SELECT
+                sv1.song_json
+            FROM songs_view AS sv1
+            WHERE sv1.id = songs.id
+        ) AS song,
+        -- json_agg(beats.*) AS beats
+        json_agg(
+            json_build_object(
+                'id', beats.id,
+                'song_id', beats.song_id,
+                'start', beats.start,
+                'end', beats.end
+            )
+        ) AS beats
+    FROM beats AS beats
+    LEFT JOIN songs AS songs
+        ON beats.song_id = songs.id
+    LEFT JOIN notesets AS notesets
+        ON notesets.beat_id = beats.id
+    WHERE
+        '["G#","B"]'::JSONB <@ (
+            SELECT to_jsonb(n.noteset) FROM (
+                SELECT
+                    array_agg(notesets.note) AS noteset
+                FROM notesets
+                WHERE
+                    notesets.beat_id = beats.id
+                GROUP BY notesets.beat_id
+            ) AS n
+        )
+    GROUP BY songs.id
+) AS c;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+EXPLAIN ANALYZE
+
+WITH matching_song_beats AS (
+        SELECT
+            songs.id AS song_id,
+            beats.id AS beat_id
+        FROM beats AS beats
+        LEFT JOIN songs AS songs
+            ON beats.song_id = songs.id
+        LEFT JOIN notesets AS notesets
+            ON notesets.beat_id = beats.id
+        WHERE
+            '["G#","B"]'::JSONB <@ (
+                SELECT to_jsonb(n.noteset) FROM (
+                    SELECT
+                        array_agg(notesets.note) AS noteset
+                    FROM notesets
+                    WHERE
+                        notesets.beat_id = beats.id
+                    GROUP BY notesets.beat_id
+                ) AS n
+            )
+        GROUP BY songs.id, beats.id
+    ),
+    song_beats AS (
+        SELECT
+            matching_song_beats.song_id,
+            matching_song_beats.beat_id,
+            json_agg(notesets.*) AS noteset,
+            json_agg(notes.*) AS notes
+        FROM matching_song_beats
+        LEFT JOIN notesets
+            ON notesets.beat_id = matching_song_beats.beat_id
+        LEFT JOIN notes
+            ON notes.beat_id = matching_song_beats.beat_id
+        GROUP BY matching_song_beats.song_id, matching_song_beats.beat_id
+    )
+
+
+-- SELECT * FROM matching_song_beats;
+SELECT * FROM song_beats;
+
+
+
+SELECT
+    count(DISTINCT songbeats.beat_id) AS matches,
+    (
+        SELECT
+            count(*)
+        FROM beats AS b1
+        WHERE b1.song_id = songbeats.song_id
+    ) AS total,
+    (
+        SELECT
+            sv1.song_json
+        FROM songs_view AS sv1
+        WHERE sv1.id = songbeats.song_id
+    ) AS song,
+    (
+        SELECT
+
+        FROM
+    )
+    -- json_agg(
+    --     json_build_object(
+    --         'id', beats.id,
+    --         'song_id', beats.song_id,
+    --         'start', beats.start,
+    --         'end', beats.end
+    --     )
+    -- ) AS beats
+FROM matching_song_beats AS songbeats GROUP BY song_id;
+
+
+
+
+
+
+
+
+SELECT json_agg(c) FROM (
+
+
 ) AS c;

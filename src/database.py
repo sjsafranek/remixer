@@ -2,6 +2,7 @@
 import json
 import psycopg2
 
+from .analyze_wav import ks_key
 
 
 
@@ -10,7 +11,8 @@ class Collection(object):
     def __init__(self, models):
         self.models = models
 
-
+    def filter(self, rules):
+        print("TODO")
 
 
 
@@ -25,6 +27,11 @@ class Model(object):
 
     def getCursor(self):
         return self.getDatabase().getCursor()
+
+    def set(self, columnId, value):
+        with self.getCursor() as cursor:
+            cursor.execute("""UPDATE {0} SET {1} = %s WHERE id = %s;""".format(self.table, columnId), (value, self.id,))
+            self.save()
 
     def save(self):
         self.getDatabase().commit()
@@ -57,9 +64,9 @@ class Beat(Model):
     def importNotes(self, notes):
         with self.getCursor() as cursor:
             for note in notes:
-                cursor.execute("""INSERT INTO notes (song_id, beat_id, note, "power", frequency)
-                                    VALUES (%s, %s, %s, %s, %s);""",
-                                (self.song.id, self.id, note["note"], note["power"], note["frequency"]))
+                cursor.execute("""INSERT INTO notes (beat_id, note, "power", frequency)
+                                    VALUES (%s, %s, %s, %s);""",
+                                (self.id, note["note"], note["power"], note["frequency"]))
             self.save()
 
     @property
@@ -72,9 +79,9 @@ class Beat(Model):
     def importNoteSet(self, noteset):
         with self.getCursor() as cursor:
             for note in noteset:
-                cursor.execute("""INSERT INTO notesets (song_id, beat_id, note, "power")
-                                    VALUES (%s, %s, %s, %s)""",
-                                (self.song.id, self.id, note["note"], note["power"]))
+                cursor.execute("""INSERT INTO notesets (beat_id, note, "power")
+                                    VALUES (%s, %s, %s)""",
+                                (self.id, note["note"], note["power"]))
             self.save()
 
     @property
@@ -114,13 +121,15 @@ class Song(Model):
     def year(self):
         return self.get('year')
 
+    @property
+    def key(self):
+        return self.get('key')
+
     def reset(self):
         with self.getCursor() as cursor:
             cursor.execute("""
-                DELETE FROM notes WHERE song_id = %s;
-                DELETE FROM notesets WHERE song_id = %s;
                 DELETE FROM beats WHERE song_id = %s;
-            """, (self.id, self.id, self.id,))
+            """, (self.id, ))
             self.save()
 
     def createBeat(self, start, end):
@@ -145,17 +154,20 @@ class Song(Model):
 
     def importBeats(self, generator):
         try:
+            all_notes = []
             for chunk in generator:
                 print(json.dumps(chunk, separators=(',', ':')))
                 beat = self.createBeat(int(chunk["start"] * 1000), int(chunk["end"] * 1000))
                 beat.importNotes(chunk["notes"])
                 beat.importNoteSet(chunk["noteset"])
+                all_notes += [note['note'] for note in chunk["noteset"]]
+            key = ks_key(all_notes)
+            self.set("key", key)
+
         except Exception as err:
             print(err)
             print("Rolling back")
             self.reset()
-
-
 
 
 
@@ -218,30 +230,35 @@ class Database(object):
     def getSongsById(self, id):
         return self._getSongs("""SELECT id FROM songs WHERE id = %s;""", (id,) )
 
-    def fetchSongsWithNoteSet(self, noteset):
+    def fetchSongsWithNoteSet(self, noteset, minPower=1, maxPower=100):
         cursor = self.conn.cursor()
         cursor.execute("""
             SELECT json_agg(c) FROM (
                 SELECT
-                    (
-                        SELECT sv1.song_json
-                        FROM songs_view AS sv1
-                        WHERE sv1.id = songs.id
-                    ) AS song,
                     count(*) AS matches,
                     (
-                        SELECT count(*) FROM beats AS b1
+                        SELECT
+                            count(*)
+                        FROM beats AS b1
                         WHERE b1.song_id = songs.id
-                    ) AS total
+                    ) AS total,
+                    (
+                        SELECT
+                            sv1.song_json
+                        FROM songs_view AS sv1
+                        WHERE sv1.id = songs.id
+                    ) AS song
                 FROM beats AS beats
                 LEFT JOIN songs AS songs
                     ON beats.song_id = songs.id
                 WHERE
                     %s::JSONB <@ (
                         SELECT to_jsonb(n.noteset) FROM (
-                            SELECT array_agg(notesets.note) AS noteset
+                            SELECT
+                                array_agg(notesets.note) AS noteset
                             FROM notesets
-                            WHERE notesets.beat_id = beats.id
+                            WHERE
+                                notesets.beat_id = beats.id
                             GROUP BY notesets.beat_id
                         ) AS n
                     )
