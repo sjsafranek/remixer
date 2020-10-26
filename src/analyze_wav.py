@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from scipy.io import wavfile
 from audiolazy.lazy_midi import freq2str
 from loguru import logger
+from pydub import AudioSegment
 
 logger.remove()
 
@@ -28,12 +29,16 @@ class AudioAnalyzer(object):
     def __init__(self, filename):
         self._filename = filename
         fs_rate, signal = wavfile.read(filename)
+        self.audio_segment = AudioSegment.from_wav(filename)
         self.fs_rate = fs_rate
         self.signal = signal
 
     @property
     def filename(self):
         return self._filename
+
+    def getSnippet(self, ms_start, ms_end):
+        return self.audio_segment[ms_start:ms_end]
 
     def getBeatsWithNotes(self):
         beats = self.getBeats()
