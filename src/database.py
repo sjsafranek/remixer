@@ -146,6 +146,7 @@ class Beat(Model):
         return results[0][0]
 
 
+
 class Song(Model):
 
     table = "songs"
@@ -239,6 +240,7 @@ class Song(Model):
             print(err)
             print("Rolling back")
             self.reset()
+
 
 
 class Database(object):
