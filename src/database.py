@@ -4,12 +4,23 @@ import psycopg2
 from .music import getKeyFromNotes
 
 
-class Collection(object):
+
+class Collection(list):
+
     def __init__(self, models):
-        self.models = models
+        self._models = models
+
+    @property
+    def models(self):
+        return self._models
+
+    def __iter__(self):
+        for model in self.models:
+            yield model
 
     def filter(self, rules):
         print("TODO")
+
 
 
 class Model(object):
@@ -19,11 +30,15 @@ class Model(object):
     columns = []
 
     def __init__(self, id, db):
-        self.id = id
-        self.db = db
+        self._id = id
+        self._db = db
+
+    @property
+    def id(self):
+        return self._id
 
     def getDatabase(self):
-        return self.db
+        return self._db
 
     def getCursor(self):
         return self.getDatabase().getCursor()
@@ -296,6 +311,9 @@ class Database(object):
 
     def getSongsById(self, id):
         return self.__getSongs("""SELECT id FROM songs WHERE id = %s;""", (id,))
+
+    def getSongs(self):
+        return self.__getSongs("""SELECT id FROM songs;""", None)
 
     # def fetchSongsWithNoteSet__depricated(self, noteset, minPower=1, maxPower=100):
     #     cursor = self.conn.cursor()
