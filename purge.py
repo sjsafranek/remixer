@@ -15,11 +15,15 @@ if __name__ == "__main__":
         password=args.dbpass
     )
 
+    # songs = db.getSongs()
+    # iterator = iter(songs)
+    # while True:
+    #     try:
+    #         song = next(iterator)
+    #         song.delete()
+    #     except StopIteration:
+    #         break
+
     songs = db.getSongs()
-    iterator = iter(songs)
-    while True:
-        try:
-            song = next(iterator)
-            song.delete()
-        except StopIteration:
-            break
+    for song in songs:
+        song.delete()
