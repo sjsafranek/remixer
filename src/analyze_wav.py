@@ -12,7 +12,8 @@ from scipy.io import wavfile
 from audiolazy.lazy_midi import freq2str
 from loguru import logger
 from pydub import AudioSegment
-from pygame import mixer
+# from pygame import mixer
+from pydub import playback
 
 logger.remove()
 
@@ -57,10 +58,8 @@ class AudioAnalyzer(object):
         return clipBytes
 
     def playSnippet(self, ms_start, ms_end):
-        clipBytes = self.getSnippetBytes(ms_start, ms_end)
-        mixer.init()
-        mixer.music.load(clipBytes)
-        mixer.music.play()
+        clip = self.getSnippet(ms_start, ms_end)
+        playback.play(clip)
 
     def getBeatsWithNotes(self):
         beats = self.getBeats()
