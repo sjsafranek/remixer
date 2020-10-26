@@ -1,3 +1,4 @@
+import io
 import sys
 import copy
 import operator
@@ -11,6 +12,7 @@ from scipy.io import wavfile
 from audiolazy.lazy_midi import freq2str
 from loguru import logger
 from pydub import AudioSegment
+from pygame import mixer
 
 logger.remove()
 
@@ -29,16 +31,36 @@ class AudioAnalyzer(object):
     def __init__(self, filename):
         self._filename = filename
         fs_rate, signal = wavfile.read(filename)
-        self.audio_segment = AudioSegment.from_wav(filename)
-        self.fs_rate = fs_rate
-        self.signal = signal
+        self._audio_segment = AudioSegment.from_wav(filename)
+        self._fs_rate = fs_rate
+        self._signal = signal
 
     @property
     def filename(self):
         return self._filename
 
+    @property
+    def fs_rate(self):
+        return self._fs_rate
+
+    @property
+    def signal(self):
+        return self._signal
+
     def getSnippet(self, ms_start, ms_end):
-        return self.audio_segment[ms_start:ms_end]
+        return self._audio_segment[ms_start:ms_end]
+
+    def getSnippetBytes(self, ms_start, ms_end, format="mp3"):
+        clip = self.getSnippet(ms_start, ms_end)
+        clipBytes = io.BytesIO()
+        clip.export(out_f=clipBytes, format=format)
+        return clipBytes
+
+    def playSnippet(self, ms_start, ms_end):
+        clipBytes = self.getSnippetBytes(ms_start, ms_end)
+        mixer.init()
+        mixer.music.load(clipBytes)
+        mixer.music.play()
 
     def getBeatsWithNotes(self):
         beats = self.getBeats()

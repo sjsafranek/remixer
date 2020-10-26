@@ -100,6 +100,8 @@ CREATE TABLE IF NOT EXISTS beats (
     song_id             INTEGER NOT NULL,
     start               BIGINT NOT NULL,
     "end"               BIGINT NOT NULL,
+    format              VARCHAR,
+    clip                BYTEA,
     FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE,
     UNIQUE(song_id, start, "end")
 );

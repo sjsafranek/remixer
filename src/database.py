@@ -1,8 +1,8 @@
+
 import json
 import psycopg2
 
 from .music import getKeyFromNotes
-
 
 
 class Collection(list):
@@ -90,7 +90,9 @@ class Beat(Model):
     columns = [
         'id',
         'end',
-        'start'
+        'start',
+        'format',
+        'clip'
     ]
 
     def __init__(self, id, db, song):
@@ -104,6 +106,14 @@ class Beat(Model):
     @property
     def start(self):
         return self.get('start')[0]
+
+    @property
+    def format(self):
+        return self.get('format')[0]
+
+    @property
+    def clip(self):
+        return self.get('clip')[0]
 
     def importNotes(self, notes):
         with self.getCursor() as cursor:
@@ -193,20 +203,18 @@ class Song(Model):
     def reset(self):
         with self.getCursor() as cursor:
             cursor.execute(
-                """
-                DELETE FROM beats WHERE song_id = %s;
-            """,
+                """DELETE FROM beats WHERE song_id = %s;""",
                 (self.id,),
             )
             self.save()
 
-    def createBeat(self, start, end):
+    def createBeat(self, start, end, format=None, clip_bytes=None):
         with self.getCursor() as cursor:
             cursor.execute(
-                """INSERT INTO beats (song_id, start, "end")
-                                VALUES (%s, %s, %s)
+                """INSERT INTO beats (song_id, start, "end", format, clip)
+                                VALUES (%s, %s, %s, %s, %s)
                                 RETURNING id;""",
-                (self.id, start, end,),
+                (self.id, start, end, format, psycopg2.Binary(clip_bytes)),
             )
             results = cursor.fetchone()
             if not results or 0 == len(results):
@@ -222,18 +230,25 @@ class Song(Model):
             results = cursor.fetchall()
         return Collection([Beat(id, self.db, self) for id in results])
 
-    def importBeats(self, generator):
+    def importBeatsFromAudioAnalyzer(self, analyzer):
         try:
             all_notes = []
-            for chunk in generator:
+            for chunk in analyzer.getBeatsWithNotes():
                 print(json.dumps(chunk, separators=(",", ":")))
-                beat = self.createBeat(
-                    int(chunk["start"] * 1000), int(chunk["end"] * 1000)
-                )
+
+                start = int(chunk["start"] * 1000)
+                end = int(chunk["end"] * 1000)
+
+                clipBytesIO = analyzer.getSnippetBytes(start, end, format="mp3")
+
+                beat = self.createBeat(start, end, format="mp3", clip_bytes=clipBytesIO.read())
+
                 beat.importNotes(chunk["notes"])
                 beat.importNoteSet(chunk["noteset"])
+
                 if len(chunk["noteset"]) > 0:
                     all_notes.append(chunk["noteset"][0]["note"])
+
             key = getKeyFromNotes(all_notes)
             self.set("key", key)
         except Exception as err:

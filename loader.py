@@ -38,12 +38,11 @@ if __name__ == "__main__":
         fname = fileHandler.name
 
         # Make the generator
-        aa = AudioAnalyzer(fname)
-        generator = aa.getBeatsWithNotes()
+        analyzer = AudioAnalyzer(fname)
 
         # Don't import data if running a dry run
         if args.dryrun:
-            for chunk in generator:
+            for chunk in analyzer.getBeatsWithNotes():
                 print(chunk)
             exit()
 
@@ -59,7 +58,7 @@ if __name__ == "__main__":
 
         # Read file and insert chunks to database
         try:
-            song.importBeats(generator)
+            song.importBeatsFromAudioAnalyzer(analyzer)
         except Exception as e:
             print(e)
             print(traceback.print_tb)
