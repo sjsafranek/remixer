@@ -390,7 +390,7 @@ WITH song_beat_ids AS (
         LEFT JOIN notesets AS notesets
             ON notesets.beat_id = beats.id
         WHERE
-            '["G#","B"]'::JSONB <@ (
+            %s::JSONB <@ (
                 SELECT to_jsonb(n.noteset) FROM (
                     SELECT
                         array_agg(notesets.note) AS noteset
