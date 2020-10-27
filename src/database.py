@@ -5,17 +5,18 @@ import psycopg2
 from .music import getKeyFromNotes
 
 
+
 class Collection(list):
 
     def __init__(self, models):
-        self._models = models
+        self += models
 
     @property
     def models(self):
-        return self._models
+        return self
 
     def __iter__(self):
-        for model in self.models:
+        for model in self:
             yield model
 
     def filter(self, rules):
@@ -61,10 +62,10 @@ class Model(object):
 
     def get(self, columns=[]):
         if list == type(columns):
-            column = ",".join(columns)
+            columns = ",".join(columns)
         with self.getCursor() as cursor:
             cursor.execute(
-                """SELECT {0} FROM {1} WHERE id = %s;""".format(column, self.table),
+                """SELECT {0} FROM {1} WHERE id = %s;""".format(columns, self.table),
                 (self.id,),
             )
             results = cursor.fetchone()
@@ -228,7 +229,20 @@ class Song(Model):
         with self.getCursor() as cursor:
             cursor.execute("""SELECT id FROM beats WHERE song_id = %s;""", (self.id,))
             results = cursor.fetchall()
-        return Collection([Beat(id, self.db, self) for id in results])
+        return Collection([Beat(id, self.getDatabase(), self) for id in results])
+
+    def __getBeats(self, query, params):
+        with self.getCursor() as cursor:
+            print(cursor.mogrify(query, params))
+            cursor.execute(query, params)
+            results = cursor.fetchall()
+        return Collection([Beat(row[0], self.getDatabase(), self) for row in results])
+
+    def getBeats(self, *args, **kwargs):
+        kwargs['song_id'] = self.id
+        sqlFilter = self.getDatabase().getQueryFilter(*args, **kwargs)
+        sqlParams = self.getDatabase().getQueryParams(*args, **kwargs)
+        return self.__getBeats("""SELECT id FROM beats {0};""".format(sqlFilter), sqlParams)
 
     def importBeatsFromAudioAnalyzer(self, analyzer):
         try:
@@ -314,23 +328,29 @@ class Database(object):
 
     def __getSongs(self, query, params):
         with self.getCursor() as cursor:
+            # print(cursor.mogrify(query, params))
             cursor.execute(query, params)
             results = cursor.fetchall()
-        return Collection([Song(id, self) for id in results])
+        return Collection([Song(row[0], self) for row in results])
 
-    def getSongsByFilename(self, filename):
-        return self.__getSongs(
-            """SELECT id FROM songs WHERE filename = %s;""", (filename,)
-        )
+    def getQueryFilter(self, *args, **kwargs):
+        sqlFilter = ""
+        for key in kwargs:
+            if "" == sqlFilter:
+                sqlFilter = " WHERE "
+            else:
+                sqlFilter += " AND "
+            sqlFilter += "{0} = %s".format(key)
+        return sqlFilter
 
-    def getSongsByTitle(self, title):
-        return self.__getSongs("""SELECT id FROM songs WHERE title = %s;""", (title,))
+    def getQueryParams(self, *args, **kwargs):
+        return tuple(kwargs.values())
 
-    def getSongsById(self, id):
-        return self.__getSongs("""SELECT id FROM songs WHERE id = %s;""", (id,))
+    def getSongs(self, *args, **kwargs):
+        sqlFilter = self.getQueryFilter(*args, **kwargs)
+        sqlParams = self.getQueryParams(*args, **kwargs)
+        return self.__getSongs("""SELECT id FROM songs {0};""".format(sqlFilter), sqlParams)
 
-    def getSongs(self):
-        return self.__getSongs("""SELECT id FROM songs;""", None)
 
     # def fetchSongsWithNoteSet__depricated(self, noteset, minPower=1, maxPower=100):
     #     cursor = self.conn.cursor()

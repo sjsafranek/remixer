@@ -11,9 +11,6 @@ from src.analyze_wav import AudioAnalyzer
 if __name__ == "__main__":
     parser = cmd.getArgumentParser()
     parser.add_argument('-file', type=str, help='song file')
-    parser.add_argument('-name', type=str, help='song name')
-    parser.add_argument('-artist', type=str, help='artist')
-    parser.add_argument('-genre', type=str, help='genre')
     parser.add_argument('--dryrun', action='store_true', help='does not do database writes')
     parser.set_defaults(dryrun=False)
     args = parser.parse_args()

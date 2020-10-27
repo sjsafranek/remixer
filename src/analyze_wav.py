@@ -12,7 +12,6 @@ from scipy.io import wavfile
 from audiolazy.lazy_midi import freq2str
 from loguru import logger
 from pydub import AudioSegment
-# from pygame import mixer
 from pydub import playback
 
 logger.remove()
