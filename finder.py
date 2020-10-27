@@ -4,6 +4,7 @@ from src import database
 
 
 if __name__ == "__main__":
+
     parser = cmd.getArgumentParser()
     parser.add_argument('noteset', metavar='N', type=str, nargs='+', help='noteset to search for')
     args = parser.parse_args()

@@ -9,6 +9,7 @@ from src.analyze_wav import AudioAnalyzer
 
 
 if __name__ == "__main__":
+
     parser = cmd.getArgumentParser()
     parser.add_argument('-file', type=str, help='song file')
     parser.add_argument('--dryrun', action='store_true', help='does not do database writes')

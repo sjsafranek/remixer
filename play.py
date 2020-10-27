@@ -8,6 +8,7 @@ from pydub import playback
 
 
 if __name__ == "__main__":
+
     parser = cmd.getArgumentParser()
     parser.add_argument('-song_id', type=int, required=True, help='Song ID containing beat')
     parser.add_argument('-beat_id', type=int, required=True, help='Beat ID to play')
